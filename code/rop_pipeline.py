@@ -383,6 +383,15 @@ def main():
 
     joblib.dump({"model": fitted[best], "features": FEATURES, "target": TARGET},
                 MOD / "final_rop_model.joblib")
+    joblib.dump({"models": fitted, "best": best, "features": FEATURES, "target": TARGET},
+                MOD / "all_models.joblib", compress=3)
+    tp = X_te.copy(); tp["ROP_actual"] = y_te.values
+    for n, p in preds.items():
+        tp[f"pred_{n}"] = p
+    tp.to_csv(RES / "test_predictions.csv", index=False)
+    imp = pd.DataFrame({n: fitted[n].named_steps["model"].feature_importances_
+                        for n in ["Random Forest", "Decision Tree"]}, index=FEATURES)
+    imp.to_csv(RES / "feature_importance.csv")
     summary = {"best_model": best, "best_params": best_params, "n_train": len(X_tr),
                "n_test": len(X_te), "outlier_bounds": [lo, hi], "n_outliers": n_out}
     (RES / "summary.json").write_text(json.dumps(summary, indent=2, default=str))

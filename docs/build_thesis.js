@@ -656,6 +656,12 @@ function appendix(b) {
   b.unnumbered("APPENDIX B — PROJECT SCHEDULE");
   b.ch = "B"; b.fig = 0;
   b.figure("diagram_gantt.png", "Project schedule (Gantt chart)", 6.2);
+  b.unnumbered("APPENDIX C — ROP·AI WEB APPLICATION");
+  b.ch = "C"; b.fig = 0;
+  b.p("To make the final model usable by drilling engineers and to demonstrate the project, a web application named **ROP·AI** was developed with Streamlit. It loads the trained models and results produced by the pipeline and provides live single-point prediction, a WOB–RPM optimizer, interactive data exploration, model comparison and batch prediction from CSV files. Detailed instructions are given in the separate *ROP·AI User Guide*. The application is started with: streamlit run app/streamlit_app.py");
+  b.figure("diagram_app_architecture.png", "Architecture of the ROP·AI system", 6.0);
+  b.figure("../docs/screenshots/02_predict.png", "ROP·AI prediction page with live ROP prediction from drilling parameters", 6.2);
+  b.figure("../docs/screenshots/03_optimizer.png", "ROP·AI optimizer page showing predicted ROP over WOB and RPM", 6.2);
 }
 
 // =================================================================== DOCUMENT
@@ -706,4 +712,5 @@ async function build() {
   fs.writeFileSync(path.join(__dirname, "ROP_FYP_Complete_Thesis_Draft.docx"), await Packer.toBuffer(makeDoc(f.out, m.out)));
   console.log("Documents written to", __dirname);
 }
-build().catch((e) => { console.error(e); process.exit(1); });
+if (require.main === module) build().catch((e) => { console.error(e); process.exit(1); });
+module.exports = { Builder, makeDoc, runs, TITLE, TITLE_CASE, SUPERVISOR, MEMBERS, BATCH, DATE, D };

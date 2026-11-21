@@ -199,6 +199,24 @@ def gantt():
     fig.savefig(FIG / "diagram_gantt.png"); plt.close(fig)
 
 
+def app_architecture():
+    fig, ax = plt.subplots(figsize=(7.4, 3.6))
+    ax.set_xlim(0, 15); ax.set_ylim(0, 7); ax.axis("off")
+    box(ax, 1.6, 5.2, 2.8, 1.2, "Drilling data\n(CSV: field / Volve)", fs=8)
+    box(ax, 5.4, 5.2, 3.2, 1.2, "rop_pipeline.py\nclean · EDA\ntrain · tune", fc=LAQUA, ec=AQUA, fs=7.5)
+    box(ax, 9.6, 6.0, 3.4, 0.8, "models/*.joblib\n(5 trained models)", fc=LGREY, ec=GREY, fs=7.5)
+    box(ax, 9.6, 4.6, 3.4, 0.8, "results/*.csv\nfigures/*.png", fc=LGREY, ec=GREY, fs=7.5)
+    box(ax, 13.2, 5.3, 2.8, 1.4, "Thesis builder\n(Word documents)", fc=LGREY, ec=GREY, fs=7.5)
+    box(ax, 7.5, 2.0, 5.6, 1.5, "ROP·AI web app (Streamlit)\nPredict · Optimizer · Explorer\nResults · Batch · About",
+        fc=LORANGE, ec=ORANGE, fs=8)
+    box(ax, 13.2, 2.0, 2.8, 1.2, "User / examiner\n(web browser)", fs=8)
+    box(ax, 1.6, 2.0, 2.8, 1.2, "New CSV upload\n(batch prediction)", fs=8)
+    arrow(ax, 3.0, 5.2, 3.8, 5.2); arrow(ax, 7.0, 5.4, 7.9, 5.9); arrow(ax, 7.0, 5.0, 7.9, 4.7)
+    arrow(ax, 11.3, 5.0, 11.8, 5.2); arrow(ax, 9.0, 5.6, 8.2, 2.75); arrow(ax, 9.6, 4.2, 9.0, 2.75)
+    arrow(ax, 10.3, 2.0, 11.8, 2.0); arrow(ax, 11.8, 1.7, 10.3, 1.7); arrow(ax, 3.0, 2.0, 4.7, 2.0)
+    fig.savefig(FIG / "diagram_app_architecture.png"); plt.close(fig)
+
+
 if __name__ == "__main__":
-    flowchart(); rop_factors(); drilling_system(); ann(); random_forest(); split_cv(); gantt()
+    flowchart(); rop_factors(); drilling_system(); ann(); random_forest(); split_cv(); gantt(); app_architecture()
     print("diagrams saved to", FIG)
