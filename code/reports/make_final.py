@@ -9,7 +9,7 @@ with those page numbers (repeated until the page numbers are stable).
 Usage (from the project root, after running the pipeline):
     python code/export_doc_data.py
     python code/verify.py
-    python docs/make_final.py
+    python code/reports/make_final.py
 Requires: Node.js with the 'docx' package, LibreOffice (soffice) and poppler (pdftotext).
 """
 import json
@@ -21,8 +21,9 @@ import sys
 import tempfile
 from pathlib import Path
 
-DOCS = Path(__file__).resolve().parent
-TOC = DOCS / ".toc"
+HERE = Path(__file__).resolve().parent            # builder scripts
+DOCS = HERE.parents[1] / "documents"             # output folder
+TOC = HERE / ".toc"
 BUILDS = {  # builder script -> documents it produces
     "build_thesis.js": ["ROP_FYP_Proposal_Ch1-3", "ROP_FYP_Complete_Thesis_Draft"],
     "build_user_guide.js": ["ROP_AI_App_User_Guide"],
@@ -86,7 +87,7 @@ def main():
     for script, names in BUILDS.items():
         prev = None
         for it in range(4):
-            subprocess.run(["node", str(DOCS / script)], check=True, capture_output=True)
+            subprocess.run(["node", str(HERE / script)], check=True, capture_output=True)
             cur = {}
             for n in names:
                 pdf = to_pdf(DOCS / f"{n}.docx", tmp)

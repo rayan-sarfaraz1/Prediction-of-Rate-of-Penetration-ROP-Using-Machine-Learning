@@ -1,4 +1,4 @@
-"""Collect pipeline results into results/doc_data.json for docs/build_thesis.js."""
+"""Collect pipeline results into results/doc_data.json for code/reports/build_thesis.js."""
 import json
 from pathlib import Path
 import joblib

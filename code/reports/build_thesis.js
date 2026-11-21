@@ -2,7 +2,7 @@
  * Builds two Word documents in BUITEMS P&G thesis format:
  *   1. ROP_FYP_Proposal_Ch1-3.docx        (Introduction, Literature Review, Methodology + work plan)
  *   2. ROP_FYP_Complete_Thesis_Draft.docx (all front matter + Chapters 1-5 + references + appendices)
- * Usage:  node docs/build_thesis.js
+ * Usage:  node code/reports/build_thesis.js   (output: documents/)
  */
 const fs = require("fs");
 const path = require("path");
@@ -13,7 +13,8 @@ const {
   PositionalTab, PositionalTabAlignment, PositionalTabRelativeTo, PositionalTabLeader,
 } = require("docx");
 
-const ROOT = path.resolve(__dirname, "..");
+const ROOT = path.resolve(__dirname, "..", "..");
+const OUT = path.join(ROOT, "documents");
 const FIG = path.join(ROOT, "figures");
 const D = JSON.parse(fs.readFileSync(path.join(ROOT, "results", "doc_data.json"), "utf8"));
 const BL = D.blind ? Object.fromEntries(D.blind.map((r) => [r[0], { MAE: r[1], MSE: r[2], RMSE: r[3], R2: r[4] }])) : null;
@@ -237,7 +238,7 @@ function abstractPage(b, kind) {
 }
 
 // Static table of contents. `toc` = [{kind, level, text, page}] from the previous build pass
-// (page numbers are read back from the rendered PDF by docs/make_final.py). Without data, a
+// (page numbers are read back from the rendered PDF by code/reports/make_final.py). Without data, a
 // Word TOC field is used instead.
 function tocLine(text, page, level, kind) {
   const top = kind === "h" && level === 1;
@@ -259,7 +260,7 @@ function tocPages(b, toc, lists = true) {
 }
 
 // Two-pass build: pass 1 collects the headings/captions, pass 2 renders the static TOC with
-// page numbers from docs/.toc/<name>.json (or "00" placeholders of the same width).
+// page numbers from code/reports/.toc/<name>.json (or "00" placeholders of the same width).
 async function buildOne(name, frontFn, mainFn) {
   const run = (toc) => { const f = new Builder(); frontFn(f, toc); const m = new Builder(); mainFn(m); return [f, m]; };
   const [f1, m1] = run(null);
@@ -271,7 +272,8 @@ async function buildOne(name, frontFn, mainFn) {
   if (fs.existsSync(pf)) pages = JSON.parse(fs.readFileSync(pf, "utf8"));
   const toc = entries.map((e, i) => ({ ...e, page: pages[i] ?? "00" }));
   const [f, m] = run(toc);
-  fs.writeFileSync(path.join(__dirname, `${name}.docx`), await Packer.toBuffer(makeDoc(f.out, m.out)));
+  fs.mkdirSync(OUT, { recursive: true });
+  fs.writeFileSync(path.join(OUT, `${name}.docx`), await Packer.toBuffer(makeDoc(f.out, m.out)));
 }
 
 function nomenclature(b) {
@@ -714,6 +716,8 @@ function appendix(b) {
     ["tests/test_pipeline.py", "44 automated tests: formulas, cleaning, split, leakage, models, saved model, app pages"],
     ["app/streamlit_app.py", "ROP·AI web application"], ["data/", "Raw, cleaned and blind-well datasets (CSV)"],
     ["figures/", "All graphs and diagrams (PNG)"], ["results/", "Tables of results (CSV/JSON)"], ["models/final_rop_model.joblib", "Saved final ROP prediction model"],
+    ["documents/", "Final thesis, proposal, user guide and verification report (Word + PDF), app screenshots, reference files"],
+    ["code/reports/", "Scripts that build all Word/PDF documents (make_final.py)"],
   ], [3, 5], { leftAll: true });
   b.p("**Commands:**  python code/rop_pipeline.py --data data/your_field_data.csv --blind data/your_blind_well.csv   then   python code/verify.py", { align: AlignmentType.LEFT });
   b.unnumbered("APPENDIX B — PROJECT SCHEDULE");
@@ -723,8 +727,8 @@ function appendix(b) {
   b.ch = "C"; b.fig = 0;
   b.p("To make the final model usable by drilling engineers and to demonstrate the project, a web application named **ROP·AI** was developed with Streamlit. It loads the trained models and results produced by the pipeline and provides live single-point prediction, a WOB–RPM optimizer, interactive data exploration, model comparison and batch prediction from CSV files. Detailed instructions are given in the separate *ROP·AI User Guide*. The application is started with: streamlit run app/streamlit_app.py");
   b.figure("diagram_app_architecture.png", "Architecture of the ROP·AI system", 6.0);
-  b.figure("../docs/screenshots/02_predict.png", "ROP·AI prediction page with live ROP prediction from drilling parameters", 6.2);
-  b.figure("../docs/screenshots/03_optimizer.png", "ROP·AI optimizer page showing predicted ROP over WOB and RPM", 6.2);
+  b.figure("../documents/screenshots/02_predict.png", "ROP·AI prediction page with live ROP prediction from drilling parameters", 6.2);
+  b.figure("../documents/screenshots/03_optimizer.png", "ROP·AI optimizer page showing predicted ROP over WOB and RPM", 6.2);
 }
 
 // =================================================================== DOCUMENT
@@ -770,7 +774,7 @@ async function build() {
   await buildOne("ROP_FYP_Complete_Thesis_Draft",
     (f, toc) => { titlePage(f, "complete"); submittedPage(f); declarationPages(f); abstractPage(f, "complete"); tocPages(f, toc); nomenclature(f); },
     (m) => { chapter1(m); chapter2(m); chapter3(m, "complete"); chapter4(m); chapter5(m); references(m); appendix(m); });
-  console.log("Documents written to", __dirname);
+  console.log("Documents written to", OUT);
 }
 if (require.main === module) build().catch((e) => { console.error(e); process.exit(1); });
 module.exports = { Builder, makeDoc, runs, buildOne, tocPages, TITLE, TITLE_CASE, SUPERVISOR, MEMBERS, BATCH, DATE, D };

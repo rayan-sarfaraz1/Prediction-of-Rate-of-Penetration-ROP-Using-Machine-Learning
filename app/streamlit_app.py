@@ -16,7 +16,7 @@ import plotly.graph_objects as go
 import streamlit as st
 
 ROOT = Path(__file__).resolve().parents[1]
-RES, MOD, DATA, FIG, DOCS = ROOT / "results", ROOT / "models", ROOT / "data", ROOT / "figures", ROOT / "docs"
+RES, MOD, DATA, FIG, DOCS = ROOT / "results", ROOT / "models", ROOT / "data", ROOT / "figures", ROOT / "documents"
 
 FEATURES = ["WOB", "RPM", "Torque", "Q", "MW", "SPP", "Bit_Dia", "Depth"]
 META = {  # label, unit, min, max, default, step

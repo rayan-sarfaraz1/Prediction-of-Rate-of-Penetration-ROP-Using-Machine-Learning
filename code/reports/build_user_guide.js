@@ -1,13 +1,13 @@
 /*
- * Builds docs/ROP_AI_App_User_Guide.docx — guide to the ROP·AI web application.
- * Usage: node docs/build_user_guide.js   (run after app screenshots exist in docs/screenshots)
+ * Builds documents/ROP_AI_App_User_Guide.docx — guide to the ROP·AI web application.
+ * Usage: node code/reports/build_user_guide.js   (run after app screenshots exist in documents/screenshots)
  */
 const fs = require("fs");
 const path = require("path");
 const { AlignmentType, ImageRun, Paragraph } = require("docx");
 const { Builder, buildOne, tocPages, TITLE, SUPERVISOR, MEMBERS, BATCH, D } = require("./build_thesis");
 
-const SS = "../docs/screenshots/";
+const SS = "../documents/screenshots/";
 const best = D.summary.best_model;
 const M = Object.fromEntries(D.models.map((r) => [r[0], r]));
 
@@ -68,7 +68,7 @@ function body(b) {
     ["code/rop_pipeline.py", "Training pipeline (cleaning → models → results)"], ["code/generate_synthetic_data.py", "Demo dataset generator (testing only)"],
     ["code/make_diagrams.py, code/export_doc_data.py", "Diagrams and data for the documents"], ["data/", "Raw and cleaned CSV data"],
     ["models/all_models.joblib", "All five trained models"], ["models/final_rop_model.joblib", "Best (final) model"],
-    ["results/", "Result tables (CSV/JSON)"], ["figures/", "Graphs and diagrams (PNG)"], ["docs/", "Thesis, proposal, this guide and their build scripts"],
+    ["results/", "Result tables (CSV/JSON)"], ["figures/", "Graphs and diagrams (PNG)"], ["documents/", "Thesis, proposal, user guide, verification report (Word + PDF), screenshots, reference files"], ["code/reports/", "Scripts that build all documents"],
   ], [3.2, 4.8], { leftAll: true });
 
   b.chapter("Installation and Running");
@@ -135,7 +135,7 @@ function body(b) {
     "Save the file in the data folder, e.g. data/volve_well1.csv.",
     "Run:  **python code/rop_pipeline.py --data data/volve_well1.csv**  (takes 1–3 minutes).",
     "Restart the app. All pages now show the real-data results. Remove the demo notice from the sidebar in app/streamlit_app.py.",
-    "Rebuild the thesis with the new results:  **python code/export_doc_data.py**  then  **node docs/build_thesis.js**.",
+    "Rebuild the thesis with the new results:  **python code/export_doc_data.py**  then  **python code/reports/make_final.py**.",
   ]);
   b.table("Common unit conversions", ["From", "To", "Multiply by"], [
     ["m/hr", "ft/hr", "3.281"], ["m", "ft", "3.281"], ["tonnes (t)", "klbf", "2.2046"], ["kN", "klbf", "0.2248"],

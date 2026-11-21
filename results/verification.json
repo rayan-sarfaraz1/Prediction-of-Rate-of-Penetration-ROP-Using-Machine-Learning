@@ -6,17 +6,17 @@
  "tests": [
   {
    "name": "test_metric_formulas_match_definitions",
-   "time": 0.013,
+   "time": 0.016,
    "status": "PASS"
   },
   {
    "name": "test_perfect_prediction_gives_zero_error_and_r2_one",
-   "time": 0.001,
+   "time": 0.002,
    "status": "PASS"
   },
   {
    "name": "test_reported_metrics_recomputed_from_saved_predictions[Linear Regression]",
-   "time": 0.001,
+   "time": 0.002,
    "status": "PASS"
   },
   {
@@ -41,47 +41,47 @@
   },
   {
    "name": "test_cleaned_data_has_no_duplicates_or_missing_target",
-   "time": 0.002,
-   "status": "PASS"
-  },
-  {
-   "name": "test_cleaned_values_are_within_physical_limits",
-   "time": 0.002,
-   "status": "PASS"
-  },
-  {
-   "name": "test_rop_outliers_removed_with_iqr_rule",
-   "time": 0.0,
-   "status": "PASS"
-  },
-  {
-   "name": "test_cleaning_function_removes_bad_rows",
-   "time": 0.01,
-   "status": "PASS"
-  },
-  {
-   "name": "test_split_is_80_20_and_disjoint",
    "time": 0.003,
    "status": "PASS"
   },
   {
+   "name": "test_cleaned_values_are_within_physical_limits",
+   "time": 0.004,
+   "status": "PASS"
+  },
+  {
+   "name": "test_rop_outliers_removed_with_iqr_rule",
+   "time": 0.001,
+   "status": "PASS"
+  },
+  {
+   "name": "test_cleaning_function_removes_bad_rows",
+   "time": 0.011,
+   "status": "PASS"
+  },
+  {
+   "name": "test_split_is_80_20_and_disjoint",
+   "time": 0.004,
+   "status": "PASS"
+  },
+  {
    "name": "test_saved_test_set_matches_split",
-   "time": 0.002,
+   "time": 0.003,
    "status": "PASS"
   },
   {
    "name": "test_imputer_and_scaler_fitted_on_training_data_only[Linear Regression]",
-   "time": 0.005,
+   "time": 0.008,
    "status": "PASS"
   },
   {
    "name": "test_imputer_and_scaler_fitted_on_training_data_only[Random Forest]",
-   "time": 0.006,
+   "time": 0.008,
    "status": "PASS"
   },
   {
    "name": "test_blind_well_not_used_in_training",
-   "time": 0.011,
+   "time": 0.013,
    "status": "PASS"
   },
   {
@@ -91,17 +91,17 @@
   },
   {
    "name": "test_random_forest_tuned_on_required_hyperparameters",
-   "time": 0.0,
+   "time": 0.001,
    "status": "PASS"
   },
   {
    "name": "test_saved_final_model_reproduces_predictions",
-   "time": 0.02,
+   "time": 0.019,
    "status": "PASS"
   },
   {
    "name": "test_final_model_follows_selection_rule",
-   "time": 0.002,
+   "time": 0.001,
    "status": "PASS"
   },
   {
@@ -151,7 +151,7 @@
   },
   {
    "name": "test_required_figures_exist[eval_actual_vs_predicted.png]",
-   "time": 0.0,
+   "time": 0.001,
    "status": "PASS"
   },
   {
@@ -161,7 +161,7 @@
   },
   {
    "name": "test_required_figures_exist[eval_residuals.png]",
-   "time": 0.001,
+   "time": 0.0,
    "status": "PASS"
   },
   {
@@ -186,42 +186,42 @@
   },
   {
    "name": "test_every_app_page_runs_without_error[\\U0001f3e0 Overview]",
-   "time": 0.921,
+   "time": 1.136,
    "status": "PASS"
   },
   {
    "name": "test_every_app_page_runs_without_error[\\U0001f3af Predict ROP]",
-   "time": 0.496,
+   "time": 0.438,
    "status": "PASS"
   },
   {
    "name": "test_every_app_page_runs_without_error[\\u2699\\ufe0f Optimizer]",
-   "time": 0.31,
+   "time": 0.426,
    "status": "PASS"
   },
   {
    "name": "test_every_app_page_runs_without_error[\\U0001f4ca Data Explorer]",
-   "time": 0.488,
+   "time": 0.722,
    "status": "PASS"
   },
   {
    "name": "test_every_app_page_runs_without_error[\\U0001f4c8 Model Results]",
-   "time": 0.453,
+   "time": 0.497,
    "status": "PASS"
   },
   {
    "name": "test_every_app_page_runs_without_error[\\U0001f4c1 Batch Prediction]",
-   "time": 0.328,
+   "time": 0.49,
    "status": "PASS"
   },
   {
    "name": "test_every_app_page_runs_without_error[\\U0001f4c4 Reports]",
-   "time": 0.549,
+   "time": 0.501,
    "status": "PASS"
   },
   {
    "name": "test_every_app_page_runs_without_error[\\u2139\\ufe0f About]",
-   "time": 0.376,
+   "time": 0.352,
    "status": "PASS"
   }
  ],
@@ -277,5 +277,5 @@
    "max_abs_diff": 8.881784197001252e-16
   }
  ],
- "pytest_tail": "44 passed in 5.83s"
+ "pytest_tail": "44 passed in 6.68s"
 }

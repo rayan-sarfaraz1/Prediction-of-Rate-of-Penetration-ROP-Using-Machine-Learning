@@ -1,6 +1,6 @@
 """
 Runs the automated test-suite and an independent re-computation of all reported metrics,
-and writes results/verification.json (used by docs/build_verification.js).
+and writes results/verification.json (used by code/reports/build_verification.js).
 
 Usage:  python code/verify.py
 """

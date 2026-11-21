@@ -1,13 +1,13 @@
 /*
- * Builds docs/ROP_FYP_Verification_Report.docx — requirements traceability + verification evidence.
- * Usage: python code/verify.py && node docs/build_verification.js
+ * Builds documents/ROP_FYP_Verification_Report.docx — requirements traceability + verification evidence.
+ * Usage: python code/verify.py && node code/reports/build_verification.js
  */
 const fs = require("fs");
 const path = require("path");
 const { AlignmentType, ImageRun, Paragraph } = require("docx");
 const { Builder, buildOne, tocPages, TITLE, SUPERVISOR, MEMBERS, BATCH, D } = require("./build_thesis");
 
-const V = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "results", "verification.json"), "utf8"));
+const V = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "results", "verification.json"), "utf8"));
 const M = Object.fromEntries(D.models.map((r) => [r[0], r]));
 const BL = Object.fromEntries((D.blind || []).map((r) => [r[0], r[4]]));
 const best = D.summary.best_model;
@@ -110,7 +110,7 @@ function body(b) {
   b.chapter("Open Items Before Final Submission");
   b.table("Remaining actions", ["#", "Action", "Responsible"], [
     ["1", "Obtain real drilling data (Equinor Volve real-time drilling data or field records) and at least one additional well for the blind test", "Students / supervisor"],
-    ["2", "Run: python code/rop_pipeline.py --data <training.csv> --blind <blind_well.csv>, then python code/verify.py and python docs/make_final.py", "Students"],
+    ["2", "Run: python code/rop_pipeline.py --data <training.csv> --blind <blind_well.csv>, then python code/verify.py and python code/reports/make_final.py", "Students"],
     ["3", "Review the automatically updated Chapter 4 and 5 text and adjust the discussion to the real results", "Students"],
     ["4", "Fill in names, roll numbers, supervisor, batch and dates; remove the demonstration notes", "Students"],
     ["5", "Verify all references in Mendeley/EndNote; run the plagiarism check", "Students"],
