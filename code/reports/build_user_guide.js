@@ -40,7 +40,7 @@ function body(b) {
     ["📊 Data Explorer", "Interactive scatter plots, histograms, correlation heatmap, ROP–depth log and data table; accepts your own CSV"],
     ["📈 Model Results", "Comparison table (MAE, MSE, RMSE, R², CV RMSE, training time), actual-vs-predicted, residuals, feature importance, blind-well test and final model selection"],
     ["📁 Batch Prediction", "Upload a CSV of drilling data, get ROP predictions for every row, accuracy metrics and a downloadable result file"],
-    ["📄 Reports", "Downloads of the thesis, proposal, user guide and verification report (Word + PDF), all figures, result tables, final model and model card; figure gallery"],
+    ["📄 Reports", "Downloads of the thesis, proposal, user guide, verification report and SRS (Word + PDF), all figures, result tables, final model and model card; figure gallery"],
     ["ℹ️ About", "Aim, models, team, tech stack, inputs/outputs and the methodology flowchart"],
   ], [2, 6], { leftAll: true });
   b.h2("1.3 Inputs and output");
@@ -122,7 +122,7 @@ function body(b) {
     "Click **Download predictions** to save the results as CSV (opens in Excel)."]);
   b.h2("4.8 Reports page");
   b.figure(SS + "08_reports.png", "Reports & Downloads page", 6.3);
-  b.p("The Reports page collects every deliverable: the thesis, proposal, user guide and verification report (Word and PDF), a ZIP of all figures, a ZIP of all result tables, the final trained model (.joblib) and its model card (.json). The model card shows the algorithm, pipeline, hyperparameters, ANN architecture, inputs and output, test and blind-well metrics and the training range of every input. A figure gallery at the bottom lets you browse all graphs and diagrams for the presentation.");
+  b.p("The Reports page collects every deliverable: the thesis, proposal, user guide, verification report and SRS (Word and PDF), a ZIP of all figures, a ZIP of all result tables, the final trained model (.joblib) and its model card (.json). The model card shows the algorithm, pipeline, hyperparameters, ANN architecture, inputs and output, test and blind-well metrics and the training range of every input. A figure gallery at the bottom lets you browse all graphs and diagrams for the presentation.");
   b.h2("4.9 About page");
   b.figure(SS + "07_about.png", "About page", 6.3);
   b.p("The About page summarizes the aim, models, team, technology stack, inputs and output, and contains the methodology flowchart. Replace the placeholders [Supervisor Name] and [Student 1–4] in app/streamlit_app.py with your real names.");

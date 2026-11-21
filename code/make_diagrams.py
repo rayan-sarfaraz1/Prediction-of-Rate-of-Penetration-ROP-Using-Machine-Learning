@@ -217,6 +217,60 @@ def app_architecture():
     fig.savefig(FIG / "diagram_app_architecture.png"); plt.close(fig)
 
 
+def actor(ax, x, y, label):
+    ax.add_patch(Circle((x, y + 0.55), 0.18, fc="white", ec=INK2, lw=1.2))
+    ax.plot([x, x], [y + 0.37, y - 0.1], color=INK2, lw=1.2)
+    ax.plot([x - 0.3, x + 0.3], [y + 0.2, y + 0.2], color=INK2, lw=1.2)
+    ax.plot([x, x - 0.25], [y - 0.1, y - 0.5], color=INK2, lw=1.2); ax.plot([x, x + 0.25], [y - 0.1, y - 0.5], color=INK2, lw=1.2)
+    ax.text(x, y - 0.75, label, ha="center", va="top", fontsize=7.5, color=INK)
+
+
+def use_case_diagram():
+    from matplotlib.patches import Ellipse
+    fig, ax = plt.subplots(figsize=(7.4, 5.6))
+    ax.set_xlim(0, 15); ax.set_ylim(0, 11.5); ax.axis("off")
+    ax.add_patch(FancyBboxPatch((3.2, 0.3), 8.6, 10.8, boxstyle="round,pad=0.02,rounding_size=0.2", fc="#fafaf8", ec=INK2, lw=1))
+    ax.text(7.5, 10.75, "ROP·AI system", ha="center", fontsize=9, weight="bold", color=INK)
+    ucs = [(5.4, 9.7, "UC-1 Load / upload\ndrilling data"), (9.6, 9.7, "UC-2 Train, tune &\nevaluate models"),
+           (5.4, 8.1, "UC-3 Explore data\n(EDA)"), (9.6, 8.1, "UC-4 Run blind-well test\n& select final model"),
+           (5.4, 6.5, "UC-5 Predict ROP\n(single point)"), (9.6, 6.5, "UC-6 Optimize\nWOB & RPM"),
+           (5.4, 4.9, "UC-7 Batch prediction\nfrom CSV"), (9.6, 4.9, "UC-8 View model\nresults"),
+           (5.4, 3.3, "UC-9 Download reports,\nmodel & figures"), (9.6, 3.3, "UC-10 Generate thesis\n& reports"),
+           (7.5, 1.5, "UC-11 Run verification tests")]
+    for x, y, t in ucs:
+        ax.add_patch(Ellipse((x, y), 3.7, 1.15, fc=LBLUE, ec=BLUE, lw=1.1)); ax.text(x, y, t, ha="center", va="center", fontsize=6.8)
+    actor(ax, 1.3, 8.2, "Drilling engineer\n/ end user"); actor(ax, 1.3, 3.6, "Examiner /\nsupervisor")
+    actor(ax, 13.7, 8.2, "Student /\nresearcher"); actor(ax, 13.7, 3.6, "LibreOffice /\nfile system")
+    L = lambda a, b: ax.plot([a[0], b[0]], [a[1], b[1]], color=GREY, lw=0.8, zorder=0)
+    for uc in [(3.55, 8.1), (3.55, 6.5), (3.55, 4.9), (3.55, 9.7)]: L((1.6, 8.3), uc)
+    for uc in [(3.55, 3.3), (3.55, 4.9), (5.4, 0.95 + 0.0)]: pass
+    for uc in [(3.55, 3.3), (7.8, 4.9), (3.55, 6.5)]: L((1.6, 3.7), uc)
+    for uc in [(11.45, 9.7), (11.45, 8.1), (11.45, 3.3), (9.3, 1.5)]: L((13.4, 8.3), uc)
+    L((13.4, 3.7), (11.45, 3.3))
+    fig.savefig(FIG / "diagram_use_case.png"); plt.close(fig)
+
+
+def dfd():
+    fig, ax = plt.subplots(figsize=(7.4, 4.4))
+    ax.set_xlim(0, 16); ax.set_ylim(0, 9); ax.axis("off")
+    proc = lambda x, y, t: (ax.add_patch(Circle((x, y), 0.95, fc=LAQUA, ec=AQUA, lw=1.2)), ax.text(x, y, t, ha="center", va="center", fontsize=6.8))
+    store = lambda x, y, t: (ax.plot([x - 1.4, x + 1.4], [y + 0.42, y + 0.42], color=INK2, lw=1), ax.plot([x - 1.4, x + 1.4], [y - 0.42, y - 0.42], color=INK2, lw=1),
+                             ax.plot([x - 1.4, x - 1.4], [y - 0.42, y + 0.42], color=INK2, lw=1), ax.text(x, y, t, ha="center", va="center", fontsize=6.8))
+    box(ax, 1.3, 6.8, 2.2, 1.0, "Drilling data\nsource (CSV)", fs=7)
+    proc(4.4, 6.8, "1.0\nClean &\nvalidate"); proc(7.6, 6.8, "2.0\nEDA &\nfeature sel."); proc(10.8, 6.8, "3.0\nTrain &\ntune")
+    proc(14.0, 6.8, "4.0\nEvaluate &\nselect")
+    store(7.6, 4.5, "D1 data/\n(cleaned CSV)"); store(10.8, 4.5, "D2 models/\n(.joblib)"); store(14.0, 4.5, "D3 results/\n+ figures/")
+    proc(10.8, 1.9, "5.0\nROP·AI\nweb app"); proc(14.0, 1.9, "6.0\nBuild\nreports")
+    box(ax, 6.0, 1.9, 2.6, 1.0, "User (browser)", fs=7); box(ax, 1.6, 1.9, 2.6, 1.0, "Documents\n(Word + PDF)", fs=7, fc=LORANGE, ec=ORANGE)
+    for a, b in [((2.4, 6.8), (3.45, 6.8)), ((5.35, 6.8), (6.65, 6.8)), ((8.55, 6.8), (9.85, 6.8)), ((11.75, 6.8), (13.05, 6.8)),
+                 ((4.6, 5.9), (6.6, 4.75)), ((10.8, 5.85), (10.8, 4.85)), ((14.0, 5.85), (14.0, 4.85)), ((10.8, 4.15), (10.8, 2.85)),
+                 ((12.9, 4.3), (11.6, 2.6)), ((14.0, 4.15), (14.0, 2.85)), ((9.85, 1.75), (7.3, 1.75)), ((7.3, 2.05), (9.85, 2.05)),
+                 ((13.05, 1.4), (2.9, 1.4))]:
+        arrow(ax, *a, *b)
+    ax.text(8.55, 2.35, "inputs / CSV", fontsize=6.3, color=INK2, ha="center"); ax.text(8.55, 1.35, "predictions, charts", fontsize=6.3, color=INK2, ha="center", va="top")
+    fig.savefig(FIG / "diagram_dfd.png"); plt.close(fig)
+
+
 if __name__ == "__main__":
-    flowchart(); rop_factors(); drilling_system(); ann(); random_forest(); split_cv(); gantt(); app_architecture()
+    flowchart(); rop_factors(); drilling_system(); ann(); random_forest(); split_cv(); gantt(); app_architecture(); use_case_diagram(); dfd()
     print("diagrams saved to", FIG)

@@ -28,6 +28,7 @@ BUILDS = {  # builder script -> documents it produces
     "build_thesis.js": ["ROP_FYP_Proposal_Ch1-3", "ROP_FYP_Complete_Thesis_Draft"],
     "build_user_guide.js": ["ROP_AI_App_User_Guide"],
     "build_verification.js": ["ROP_FYP_Verification_Report"],
+    "build_srs.js": ["ROP_AI_SRS"],
 }
 
 

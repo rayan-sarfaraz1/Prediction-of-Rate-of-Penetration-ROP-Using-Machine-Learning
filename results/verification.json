@@ -46,7 +46,7 @@
   },
   {
    "name": "test_cleaned_values_are_within_physical_limits",
-   "time": 0.004,
+   "time": 0.003,
    "status": "PASS"
   },
   {
@@ -56,7 +56,7 @@
   },
   {
    "name": "test_cleaning_function_removes_bad_rows",
-   "time": 0.011,
+   "time": 0.013,
    "status": "PASS"
   },
   {
@@ -66,22 +66,22 @@
   },
   {
    "name": "test_saved_test_set_matches_split",
-   "time": 0.003,
+   "time": 0.002,
    "status": "PASS"
   },
   {
    "name": "test_imputer_and_scaler_fitted_on_training_data_only[Linear Regression]",
-   "time": 0.008,
+   "time": 0.007,
    "status": "PASS"
   },
   {
    "name": "test_imputer_and_scaler_fitted_on_training_data_only[Random Forest]",
-   "time": 0.008,
+   "time": 0.006,
    "status": "PASS"
   },
   {
    "name": "test_blind_well_not_used_in_training",
-   "time": 0.013,
+   "time": 0.011,
    "status": "PASS"
   },
   {
@@ -91,27 +91,27 @@
   },
   {
    "name": "test_random_forest_tuned_on_required_hyperparameters",
-   "time": 0.001,
-   "status": "PASS"
-  },
-  {
-   "name": "test_saved_final_model_reproduces_predictions",
-   "time": 0.019,
-   "status": "PASS"
-  },
-  {
-   "name": "test_final_model_follows_selection_rule",
-   "time": 0.001,
-   "status": "PASS"
-  },
-  {
-   "name": "test_nonlinear_models_beat_linear_baseline",
    "time": 0.0,
    "status": "PASS"
   },
   {
+   "name": "test_saved_final_model_reproduces_predictions",
+   "time": 0.022,
+   "status": "PASS"
+  },
+  {
+   "name": "test_final_model_follows_selection_rule",
+   "time": 0.002,
+   "status": "PASS"
+  },
+  {
+   "name": "test_nonlinear_models_beat_linear_baseline",
+   "time": 0.001,
+   "status": "PASS"
+  },
+  {
    "name": "test_predictions_are_physically_sensible",
-   "time": 0.007,
+   "time": 0.008,
    "status": "PASS"
   },
   {
@@ -151,7 +151,7 @@
   },
   {
    "name": "test_required_figures_exist[eval_actual_vs_predicted.png]",
-   "time": 0.001,
+   "time": 0.0,
    "status": "PASS"
   },
   {
@@ -176,7 +176,7 @@
   },
   {
    "name": "test_required_figures_exist[eval_blind_well.png]",
-   "time": 0.0,
+   "time": 0.001,
    "status": "PASS"
   },
   {
@@ -186,42 +186,42 @@
   },
   {
    "name": "test_every_app_page_runs_without_error[\\U0001f3e0 Overview]",
-   "time": 1.136,
+   "time": 1.168,
    "status": "PASS"
   },
   {
    "name": "test_every_app_page_runs_without_error[\\U0001f3af Predict ROP]",
-   "time": 0.438,
+   "time": 0.471,
    "status": "PASS"
   },
   {
    "name": "test_every_app_page_runs_without_error[\\u2699\\ufe0f Optimizer]",
-   "time": 0.426,
+   "time": 0.428,
    "status": "PASS"
   },
   {
    "name": "test_every_app_page_runs_without_error[\\U0001f4ca Data Explorer]",
-   "time": 0.722,
+   "time": 0.532,
    "status": "PASS"
   },
   {
    "name": "test_every_app_page_runs_without_error[\\U0001f4c8 Model Results]",
-   "time": 0.497,
+   "time": 0.491,
    "status": "PASS"
   },
   {
    "name": "test_every_app_page_runs_without_error[\\U0001f4c1 Batch Prediction]",
-   "time": 0.49,
+   "time": 0.366,
    "status": "PASS"
   },
   {
    "name": "test_every_app_page_runs_without_error[\\U0001f4c4 Reports]",
-   "time": 0.501,
+   "time": 0.519,
    "status": "PASS"
   },
   {
    "name": "test_every_app_page_runs_without_error[\\u2139\\ufe0f About]",
-   "time": 0.352,
+   "time": 0.334,
    "status": "PASS"
   }
  ],
@@ -277,5 +277,5 @@
    "max_abs_diff": 8.881784197001252e-16
   }
  ],
- "pytest_tail": "44 passed in 6.68s"
+ "pytest_tail": "44 passed in 6.20s"
 }

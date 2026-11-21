@@ -434,7 +434,8 @@ elif page == "📄 Reports":
     docs = [("ROP_FYP_Complete_Thesis_Draft", "Complete thesis (Chapters 1–5)", "📘"),
             ("ROP_FYP_Proposal_Ch1-3", "Proposal / synopsis (Chapters 1–3)", "📗"),
             ("ROP_AI_App_User_Guide", "ROP·AI user guide", "📙"),
-            ("ROP_FYP_Verification_Report", "Requirements & verification report", "📕")]
+            ("ROP_FYP_Verification_Report", "Requirements & verification report", "📕"),
+            ("ROP_AI_SRS", "Software Requirements Specification (SRS)", "📓")]
     cols = st.columns(2)
     for i, (stem, title, icon) in enumerate(docs):
         with cols[i % 2]:

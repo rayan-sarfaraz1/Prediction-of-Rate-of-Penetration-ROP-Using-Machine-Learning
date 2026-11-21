@@ -72,7 +72,7 @@ An interactive dark-themed Streamlit app turns the trained models into a usable 
 | 📊 Data Explorer | Interactive scatter, histograms, correlation heatmap, depth log; upload your own CSV |
 | 📈 Model Results | Metrics table, actual vs predicted, residuals, feature importance, blind-well selection |
 | 📁 Batch Prediction | Upload a CSV → ROP for every row → download results |
-| 📄 Reports | Download thesis, proposal, user guide, verification report, figures, model and model card |
+| 📄 Reports | Download thesis, proposal, user guide, verification report, SRS, figures, model and model card |
 
 <p align="center">
   <img src="documents/screenshots/02_predict.png" width="49%" alt="Predict page">
@@ -93,6 +93,7 @@ All reports are in the [`documents/`](documents) folder (Word + PDF, BUITEMS the
 | Proposal / synopsis (Chapters 1–3) | [docx](documents/ROP_FYP_Proposal_Ch1-3.docx) | [pdf](documents/ROP_FYP_Proposal_Ch1-3.pdf) |
 | ROP·AI user guide | [docx](documents/ROP_AI_App_User_Guide.docx) | [pdf](documents/ROP_AI_App_User_Guide.pdf) |
 | Requirements & verification report | [docx](documents/ROP_FYP_Verification_Report.docx) | [pdf](documents/ROP_FYP_Verification_Report.pdf) |
+| Software Requirements Specification (SRS) | [docx](documents/ROP_AI_SRS.docx) | [pdf](documents/ROP_AI_SRS.pdf) |
 
 Reference files from the department and supervisor (methodology, thesis template, thesis scheme) are in
 [`documents/reference/`](documents/reference).
@@ -104,7 +105,7 @@ Reference files from the department and supervisor (methodology, thesis template
 ├── code/
 │   ├── rop_pipeline.py           complete ML workflow (cleaning → models → evaluation → final model)
 │   ├── generate_synthetic_data.py   demonstration dataset + separate blind well
-│   ├── make_diagrams.py          flowchart, drilling system, ANN, RF, CV, Gantt, architecture diagrams
+│   ├── make_diagrams.py          flowchart, drilling system, ANN, RF, CV, Gantt, architecture, use-case and DFD diagrams
 │   ├── export_doc_data.py        collects results for the documents
 │   ├── verify.py                 runs all tests + independent re-computation of metrics
 │   └── reports/                  scripts that build all Word/PDF documents (make_final.py)
