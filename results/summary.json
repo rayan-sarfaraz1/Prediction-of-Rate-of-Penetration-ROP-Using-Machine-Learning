@@ -8,7 +8,7 @@
       "min_samples_split": 2
     },
     "Random Forest": {
-      "max_depth": 20,
+      "max_depth": null,
       "min_samples_leaf": 2,
       "min_samples_split": 2,
       "n_estimators": 300
@@ -34,5 +34,8 @@
     -55.55749999999999,
     137.4675
   ],
-  "n_outliers": 26
+  "n_outliers": 26,
+  "rfe_optimum_n_features": 5,
+  "n_blind": 799,
+  "selection_rule": "mean of test R2 and blind-well R2"
 }

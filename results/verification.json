@@ -1,0 +1,281 @@
+{
+ "date": "2026-11-21",
+ "python": "3.13.18",
+ "n_tests": 44,
+ "n_pass": 44,
+ "tests": [
+  {
+   "name": "test_metric_formulas_match_definitions",
+   "time": 0.013,
+   "status": "PASS"
+  },
+  {
+   "name": "test_perfect_prediction_gives_zero_error_and_r2_one",
+   "time": 0.001,
+   "status": "PASS"
+  },
+  {
+   "name": "test_reported_metrics_recomputed_from_saved_predictions[Linear Regression]",
+   "time": 0.001,
+   "status": "PASS"
+  },
+  {
+   "name": "test_reported_metrics_recomputed_from_saved_predictions[Decision Tree]",
+   "time": 0.001,
+   "status": "PASS"
+  },
+  {
+   "name": "test_reported_metrics_recomputed_from_saved_predictions[Random Forest]",
+   "time": 0.001,
+   "status": "PASS"
+  },
+  {
+   "name": "test_reported_metrics_recomputed_from_saved_predictions[SVR (RBF)]",
+   "time": 0.001,
+   "status": "PASS"
+  },
+  {
+   "name": "test_reported_metrics_recomputed_from_saved_predictions[ANN (MLP)]",
+   "time": 0.001,
+   "status": "PASS"
+  },
+  {
+   "name": "test_cleaned_data_has_no_duplicates_or_missing_target",
+   "time": 0.002,
+   "status": "PASS"
+  },
+  {
+   "name": "test_cleaned_values_are_within_physical_limits",
+   "time": 0.002,
+   "status": "PASS"
+  },
+  {
+   "name": "test_rop_outliers_removed_with_iqr_rule",
+   "time": 0.0,
+   "status": "PASS"
+  },
+  {
+   "name": "test_cleaning_function_removes_bad_rows",
+   "time": 0.01,
+   "status": "PASS"
+  },
+  {
+   "name": "test_split_is_80_20_and_disjoint",
+   "time": 0.003,
+   "status": "PASS"
+  },
+  {
+   "name": "test_saved_test_set_matches_split",
+   "time": 0.002,
+   "status": "PASS"
+  },
+  {
+   "name": "test_imputer_and_scaler_fitted_on_training_data_only[Linear Regression]",
+   "time": 0.005,
+   "status": "PASS"
+  },
+  {
+   "name": "test_imputer_and_scaler_fitted_on_training_data_only[Random Forest]",
+   "time": 0.006,
+   "status": "PASS"
+  },
+  {
+   "name": "test_blind_well_not_used_in_training",
+   "time": 0.011,
+   "status": "PASS"
+  },
+  {
+   "name": "test_all_five_models_trained_and_compared",
+   "time": 0.001,
+   "status": "PASS"
+  },
+  {
+   "name": "test_random_forest_tuned_on_required_hyperparameters",
+   "time": 0.0,
+   "status": "PASS"
+  },
+  {
+   "name": "test_saved_final_model_reproduces_predictions",
+   "time": 0.02,
+   "status": "PASS"
+  },
+  {
+   "name": "test_final_model_follows_selection_rule",
+   "time": 0.002,
+   "status": "PASS"
+  },
+  {
+   "name": "test_nonlinear_models_beat_linear_baseline",
+   "time": 0.0,
+   "status": "PASS"
+  },
+  {
+   "name": "test_predictions_are_physically_sensible",
+   "time": 0.007,
+   "status": "PASS"
+  },
+  {
+   "name": "test_model_card_documents_required_items",
+   "time": 0.0,
+   "status": "PASS"
+  },
+  {
+   "name": "test_required_figures_exist[eda_histograms.png]",
+   "time": 0.0,
+   "status": "PASS"
+  },
+  {
+   "name": "test_required_figures_exist[eda_boxplots.png]",
+   "time": 0.0,
+   "status": "PASS"
+  },
+  {
+   "name": "test_required_figures_exist[eda_correlation_heatmap.png]",
+   "time": 0.0,
+   "status": "PASS"
+  },
+  {
+   "name": "test_required_figures_exist[eda_feature_vs_rop.png]",
+   "time": 0.0,
+   "status": "PASS"
+  },
+  {
+   "name": "test_required_figures_exist[feature_selection.png]",
+   "time": 0.0,
+   "status": "PASS"
+  },
+  {
+   "name": "test_required_figures_exist[feature_rfe.png]",
+   "time": 0.0,
+   "status": "PASS"
+  },
+  {
+   "name": "test_required_figures_exist[eval_actual_vs_predicted.png]",
+   "time": 0.0,
+   "status": "PASS"
+  },
+  {
+   "name": "test_required_figures_exist[eval_error_distribution.png]",
+   "time": 0.0,
+   "status": "PASS"
+  },
+  {
+   "name": "test_required_figures_exist[eval_residuals.png]",
+   "time": 0.001,
+   "status": "PASS"
+  },
+  {
+   "name": "test_required_figures_exist[eval_feature_importance.png]",
+   "time": 0.0,
+   "status": "PASS"
+  },
+  {
+   "name": "test_required_figures_exist[eval_model_comparison.png]",
+   "time": 0.0,
+   "status": "PASS"
+  },
+  {
+   "name": "test_required_figures_exist[eval_blind_well.png]",
+   "time": 0.0,
+   "status": "PASS"
+  },
+  {
+   "name": "test_required_figures_exist[diagram_methodology_flowchart.png]",
+   "time": 0.0,
+   "status": "PASS"
+  },
+  {
+   "name": "test_every_app_page_runs_without_error[\\U0001f3e0 Overview]",
+   "time": 0.921,
+   "status": "PASS"
+  },
+  {
+   "name": "test_every_app_page_runs_without_error[\\U0001f3af Predict ROP]",
+   "time": 0.496,
+   "status": "PASS"
+  },
+  {
+   "name": "test_every_app_page_runs_without_error[\\u2699\\ufe0f Optimizer]",
+   "time": 0.31,
+   "status": "PASS"
+  },
+  {
+   "name": "test_every_app_page_runs_without_error[\\U0001f4ca Data Explorer]",
+   "time": 0.488,
+   "status": "PASS"
+  },
+  {
+   "name": "test_every_app_page_runs_without_error[\\U0001f4c8 Model Results]",
+   "time": 0.453,
+   "status": "PASS"
+  },
+  {
+   "name": "test_every_app_page_runs_without_error[\\U0001f4c1 Batch Prediction]",
+   "time": 0.328,
+   "status": "PASS"
+  },
+  {
+   "name": "test_every_app_page_runs_without_error[\\U0001f4c4 Reports]",
+   "time": 0.549,
+   "status": "PASS"
+  },
+  {
+   "name": "test_every_app_page_runs_without_error[\\u2139\\ufe0f About]",
+   "time": 0.376,
+   "status": "PASS"
+  }
+ ],
+ "recompute": [
+  {
+   "model": "Linear Regression",
+   "MAE_reported": 8.925668985624856,
+   "RMSE_reported": 12.036673851336303,
+   "R2_reported": 0.6797942981840435,
+   "MAE_recomputed": 8.925668985624858,
+   "RMSE_recomputed": 12.036673851336303,
+   "R2_recomputed": 0.6797942981840435,
+   "max_abs_diff": 1.7763568394002505e-15
+  },
+  {
+   "model": "Decision Tree",
+   "MAE_reported": 8.81187278769307,
+   "RMSE_reported": 11.97004315245646,
+   "R2_reported": 0.6833295733022837,
+   "MAE_recomputed": 8.81187278769307,
+   "RMSE_recomputed": 11.97004315245646,
+   "R2_recomputed": 0.6833295733022837,
+   "max_abs_diff": 0.0
+  },
+  {
+   "model": "Random Forest",
+   "MAE_reported": 6.52123939260823,
+   "RMSE_reported": 8.985249988591113,
+   "R2_reported": 0.8215664958810729,
+   "MAE_recomputed": 6.52123939260823,
+   "RMSE_recomputed": 8.985249988591113,
+   "R2_recomputed": 0.8215664958810729,
+   "max_abs_diff": 0.0
+  },
+  {
+   "model": "SVR (RBF)",
+   "MAE_reported": 6.891616130280408,
+   "RMSE_reported": 9.681220005307496,
+   "R2_reported": 0.792854141758602,
+   "MAE_recomputed": 6.891616130280408,
+   "RMSE_recomputed": 9.681220005307495,
+   "R2_recomputed": 0.792854141758602,
+   "max_abs_diff": 1.7763568394002505e-15
+  },
+  {
+   "model": "ANN (MLP)",
+   "MAE_reported": 6.614575509187502,
+   "RMSE_reported": 9.027208114562074,
+   "R2_reported": 0.8198961548813758,
+   "MAE_recomputed": 6.614575509187501,
+   "RMSE_recomputed": 9.027208114562074,
+   "R2_recomputed": 0.8198961548813757,
+   "max_abs_diff": 8.881784197001252e-16
+  }
+ ],
+ "pytest_tail": "44 passed in 5.83s"
+}

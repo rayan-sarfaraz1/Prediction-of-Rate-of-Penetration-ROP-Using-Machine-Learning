@@ -10,11 +10,14 @@ const {
   Document, Packer, Paragraph, TextRun, ImageRun, Table, TableRow, TableCell, AlignmentType,
   HeadingLevel, PageBreak, Footer, PageNumber, NumberFormat, TableOfContents, StyleLevel,
   WidthType, ShadingType, BorderStyle, LevelFormat, TabStopType, VerticalAlign,
+  PositionalTab, PositionalTabAlignment, PositionalTabRelativeTo, PositionalTabLeader,
 } = require("docx");
 
 const ROOT = path.resolve(__dirname, "..");
 const FIG = path.join(ROOT, "figures");
 const D = JSON.parse(fs.readFileSync(path.join(ROOT, "results", "doc_data.json"), "utf8"));
+const BL = D.blind ? Object.fromEntries(D.blind.map((r) => [r[0], { MAE: r[1], MSE: r[2], RMSE: r[3], R2: r[4] }])) : null;
+const TOP_TEST = D.models.reduce((a, r) => (r[7] > a[7] ? r : a))[0];
 
 // ------------------------------------------------------------------ placeholders
 const TITLE = "PREDICTION OF RATE OF PENETRATION (ROP) USING MACHINE LEARNING";
@@ -56,19 +59,22 @@ function runs(text, base = {}) {
 
 // ------------------------------------------------------------------ builder state
 class Builder {
-  constructor() { this.ch = 0; this.fig = 0; this.tab = 0; this.eq = 0; this.numInst = 0; this.out = []; }
+  constructor() { this.ch = 0; this.fig = 0; this.tab = 0; this.eq = 0; this.numInst = 0; this.out = []; this.entries = []; }
+  entry(kind, level, text) { this.entries.push({ kind, level, text: text.replace(/\*\*|\*|\^\{|_\{|\}/g, "") }); }
   push(...x) { this.out.push(...x); return this; }
 
   chapter(title) {
     this.ch += 1; this.fig = 0; this.tab = 0; this.eq = 0;
+    this.entry("h", 1, `CHAPTER ${this.ch} ${title.toUpperCase()}`);
     return this.push(new Paragraph({ heading: HeadingLevel.HEADING_1, pageBreakBefore: true,
       children: [new TextRun(`CHAPTER ${this.ch} ${title.toUpperCase()}`)] }));
   }
-  unnumbered(title, pageBreak = true) {
+  unnumbered(title, pageBreak = true, toc = true) {
+    if (toc) this.entry("h", 1, title);
     return this.push(new Paragraph({ heading: HeadingLevel.HEADING_1, pageBreakBefore: pageBreak, children: [new TextRun(title)] }));
   }
-  h2(t) { return this.push(new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun(t)] })); }
-  h3(t) { return this.push(new Paragraph({ heading: HeadingLevel.HEADING_3, children: [new TextRun(t)] })); }
+  h2(t) { this.entry("h", 2, t); return this.push(new Paragraph({ heading: HeadingLevel.HEADING_2, children: [new TextRun(t)] })); }
+  h3(t) { this.entry("h", 3, t); return this.push(new Paragraph({ heading: HeadingLevel.HEADING_3, children: [new TextRun(t)] })); }
   p(t, opts = {}) {
     return this.push(new Paragraph({ alignment: opts.align || AlignmentType.JUSTIFIED, children: runs(t, opts.run || {}),
       spacing: { after: 120, line: 360 } }));
@@ -90,6 +96,7 @@ class Builder {
     const W = Math.round(widthIn * 96), H = Math.round(W * h / w);
     this.fig += 1;
     const label = `Figure ${this.ch}-${this.fig}`;
+    this.entry("fig", 1, `${label} ${caption}`);
     this.push(new Paragraph({ alignment: AlignmentType.CENTER, keepNext: true, spacing: { before: 120, after: 60 },
       children: [new ImageRun({ type: "png", data: buf, transformation: { width: W, height: H },
         altText: { title: label, description: caption, name: file } })] }));
@@ -102,6 +109,7 @@ class Builder {
   table(caption, headers, rows, widths, opts = {}) {
     let label;
     if (opts.label) label = opts.label; else { this.tab += 1; label = `Table ${this.ch}-${this.tab}`; }
+    this.entry("tab", 1, `${label} ${caption}`);
     this.push(new Paragraph({ style: "TabCaption", keepNext: true, children: runs(`${label} ${caption}`) }));
     const total = widths.reduce((a, b) => a + b, 0);
     const scaled = widths.map((w) => Math.round(w * TABLE_W / total));
@@ -221,20 +229,49 @@ function abstractPage(b, kind) {
   b.p("Rate of Penetration (ROP) is one of the most important performance indicators in oil and gas well drilling because drilling time directly controls a large share of total well cost. ROP depends on many interacting operational, hydraulic, drilling-fluid and formation parameters, which makes it difficult to predict accurately with traditional empirical models such as the Bingham and Bourgoyne–Young equations. This project develops a data-driven workflow to predict ROP from commonly available surface drilling parameters using supervised machine learning.");
   b.p("The input vector consists of weight on bit (WOB), rotary speed (RPM), torque, mud flow rate (Q), mud density (ρ), standpipe pressure (SPP), bit diameter (D) and depth, with ROP as the target variable. The methodology covers data collection, data cleaning (duplicate removal, physical-limit checks, median imputation and IQR-based outlier treatment), exploratory data analysis, feature selection using Pearson correlation, mutual information and random-forest importance, standardization and an 80:20 train–test split. Five regression models — Linear Regression (baseline), Decision Tree, Random Forest, Support Vector Regression (RBF kernel) and an Artificial Neural Network (multilayer perceptron) — are trained with grid-search hyperparameter tuning and 5-fold cross-validation, and evaluated on unseen test data using MAE, MSE, RMSE and R².");
   if (kind === "complete") {
-    b.p(`In this draft, the complete workflow was implemented in Python and demonstrated on a physics-based synthetic drilling dataset of ${D.cleaning[0][1]} records, generated so that every step could be developed and tested before the field data were available. On this demonstration data, the nonlinear models clearly outperformed the linear baseline (test R² = ${r2("Linear Regression")}): the ${best} achieved the highest accuracy (R² = ${r2(best)}), closely followed by Random Forest (R² = ${r2("Random Forest")}) and SVR (R² = ${r2("SVR (RBF)")}). Feature-importance analysis identified depth, WOB and RPM as the most influential parameters. **[These numbers must be replaced with the results obtained from the real field dataset before final submission.]**`);
+    b.p(`In this draft, the complete workflow was implemented in Python and demonstrated on a physics-based synthetic drilling dataset of ${D.cleaning[0][1]} records, generated so that every step could be developed and tested before the field data were available. On the random test set, the nonlinear models clearly outperformed the linear baseline (R² = ${r2("Linear Regression")}); ${TOP_TEST} (R² = ${r2(TOP_TEST)}) and the ANN (R² = ${r2("ANN (MLP)")}) were the most accurate. On a separate blind well that was never used in training, however, the tree-based models lost much of their accuracy (Random Forest R² = ${BL["Random Forest"].R2.toFixed(3)}) while the ANN remained robust (R² = ${BL["ANN (MLP)"].R2.toFixed(3)}). Using the mean of test and blind-well R² as the selection criterion, the ${best} was selected as the final model. Feature-importance analysis identified depth, WOB and RPM as the most influential parameters. **[These numbers must be replaced with the results obtained from the real field dataset before final submission.]**`);
   } else {
     b.p("The expected outcome is a validated and documented machine-learning model that can predict ROP for unseen drilling intervals, together with a quantitative comparison of the models and an analysis of which drilling parameters have the strongest influence on ROP.");
   }
   b.p("**Keywords:** Rate of penetration, drilling optimization, machine learning, random forest, artificial neural network, support vector regression, Python, scikit-learn", { align: AlignmentType.LEFT });
 }
 
-function tocPages(b) {
-  b.unnumbered("TABLE OF CONTENTS");
-  b.push(new TableOfContents("Table of Contents", { hyperlink: true, headingStyleRange: "1-3" }));
-  b.unnumbered("LIST OF FIGURES");
-  b.push(new TableOfContents("List of Figures", { hyperlink: true, stylesWithLevels: [new StyleLevel("FigCaption", 1)] }));
-  b.unnumbered("LIST OF TABLES");
-  b.push(new TableOfContents("List of Tables", { hyperlink: true, stylesWithLevels: [new StyleLevel("TabCaption", 1)] }));
+// Static table of contents. `toc` = [{kind, level, text, page}] from the previous build pass
+// (page numbers are read back from the rendered PDF by docs/make_final.py). Without data, a
+// Word TOC field is used instead.
+function tocLine(text, page, level, kind) {
+  const top = kind === "h" && level === 1;
+  return new Paragraph({ indent: { left: kind === "h" ? (level - 1) * 360 : 0 }, keepLines: true,
+    spacing: { before: top ? 120 : 0, after: top ? 60 : 30, line: 276 },
+    tabStops: [{ type: TabStopType.RIGHT, position: TABLE_W, leader: "dot" }],
+    children: [new TextRun({ text, bold: top, size: top ? 22 : 21 }), new TextRun({ text: `\t${page}`, size: 21, bold: top })] });
+}
+function tocPages(b, toc, lists = true) {
+  const sect = (title, kind, fieldFn) => {
+    b.unnumbered(title, true, false);
+    if (toc) toc.filter((e) => e.kind === kind).forEach((e) => b.push(tocLine(e.text, e.page, e.level, e.kind)));
+    else b.push(fieldFn());
+  };
+  sect(lists ? "TABLE OF CONTENTS" : "CONTENTS", "h", () => new TableOfContents("Table of Contents", { hyperlink: true, headingStyleRange: "1-3" }));
+  if (!lists) return;
+  sect("LIST OF FIGURES", "fig", () => new TableOfContents("List of Figures", { hyperlink: true, stylesWithLevels: [new StyleLevel("FigCaption", 1)] }));
+  sect("LIST OF TABLES", "tab", () => new TableOfContents("List of Tables", { hyperlink: true, stylesWithLevels: [new StyleLevel("TabCaption", 1)] }));
+}
+
+// Two-pass build: pass 1 collects the headings/captions, pass 2 renders the static TOC with
+// page numbers from docs/.toc/<name>.json (or "00" placeholders of the same width).
+async function buildOne(name, frontFn, mainFn) {
+  const run = (toc) => { const f = new Builder(); frontFn(f, toc); const m = new Builder(); mainFn(m); return [f, m]; };
+  const [f1, m1] = run(null);
+  const entries = [...f1.entries, ...m1.entries];
+  const dir = path.join(__dirname, ".toc"); fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, `${name}.entries.json`), JSON.stringify(entries, null, 1));
+  let pages = {};
+  const pf = path.join(dir, `${name}.pages.json`);
+  if (fs.existsSync(pf)) pages = JSON.parse(fs.readFileSync(pf, "utf8"));
+  const toc = entries.map((e, i) => ({ ...e, page: pages[i] ?? "00" }));
+  const [f, m] = run(toc);
+  fs.writeFileSync(path.join(__dirname, `${name}.docx`), await Packer.toBuffer(makeDoc(f.out, m.out)));
 }
 
 function nomenclature(b) {
@@ -366,7 +403,7 @@ function chapter3(b, kind) {
   b.h2("3.3 Data Cleaning and Preparation");
   b.p("Raw drilling data usually contain errors from sensors, data transmission and manual entry. The following steps are applied:");
   b.numbered(["Remove duplicate records.", "Identify missing values in every column.",
-    "Handle missing values: rows with missing ROP (target) are removed; missing input values are replaced with the column median, which is robust to outliers.",
+    "Handle missing values: rows with missing ROP (target) are removed; missing input values are replaced with the median, which is robust to outliers. To avoid information leakage, the median is calculated from the **training set only** and applied inside the model pipeline (Section 3.6).",
     "Identify physically unrealistic values (e.g. negative WOB, zero RPM while drilling, negative ROP) using the physical limits given in the table below, and treat them as missing.",
     "Detect and treat outliers in ROP using the interquartile-range (IQR) rule.",
     "Ensure all units are consistent (oilfield units are used throughout; metric data are converted, e.g. m/hr × 3.281 = ft/hr, tonnes × 2.2046 = klbf).",
@@ -388,12 +425,12 @@ function chapter3(b, kind) {
   b.bullets(["**Mutual information (MI)** — measures any (linear or nonlinear) dependence between an input and ROP; MI = 0 means the variables are independent:"]);
   b.equation("I(X;Y) = Σ Σ p(x,y) · log[ p(x,y) / (p(x) p(y)) ]");
   b.bullets(["**Feature importance** from tree-based models (mean decrease in impurity), and",
-    "**Recursive feature elimination (RFE)**, if appropriate, in which the least important feature is removed repeatedly and model performance is monitored."]);
-  b.p("Highly correlated input pairs (|r| > 0.9) are examined; one of the pair may be removed if it does not improve model performance.");
+    "**Recursive feature elimination with cross-validation (RFECV)**, in which the least important feature is removed repeatedly and the 5-fold cross-validated RMSE of a random forest is monitored for every number of features."]);
+  b.p("All feature-selection calculations are performed on the **training set only**, so that the test set remains completely unseen. Highly correlated input pairs (|r| > 0.9) are examined; one of the pair may be removed if it does not improve model performance.");
 
   b.h2("3.6 Data Pre-processing");
   const fs_ = b.nextFig();
-  b.p(`The cleaned dataset is randomly divided into **80% training data** and **20% testing data** (${fs_}). The training set is used to build and tune the models, while the testing set is kept completely separate for the final evaluation. Because the input parameters have very different ranges (e.g. RPM ≈ 100 while SPP ≈ 3000 psi), they are standardized to zero mean and unit standard deviation. The scaler is fitted on the training data only and then applied to the test data, to avoid information leakage:`);
+  b.p(`The cleaned dataset is randomly divided into **80% training data** and **20% testing data** (${fs_}). The training set is used to build and tune the models, while the testing set is kept completely separate for the final evaluation. Because the input parameters have very different ranges (e.g. RPM ≈ 100 while SPP ≈ 3000 psi), they are standardized to zero mean and unit standard deviation. The imputer (median) and the scaler are fitted on the training data only and then applied to the test data, inside a single scikit-learn Pipeline (imputer → scaler → model), to avoid information leakage:`);
   b.equation("z = (x − μ) / σ");
   b.figure("diagram_split_cv.png", "80:20 train–test split and 5-fold cross-validation used for hyperparameter tuning", 6.0);
 
@@ -438,12 +475,17 @@ function chapter3(b, kind) {
   b.p("**Coefficient of Determination (R²):**"); b.equation("R^{2} = 1 − Σ( y_{i} − ŷ_{i} )^{2} / Σ( y_{i} − ȳ )^{2}");
   b.p("Lower MAE, MSE and RMSE and an R² closer to 1 indicate better performance. Training time is also recorded. A comparison table of all models is then prepared. The results are reported as measured, without deciding in advance which algorithm will perform best.");
 
-  b.h2("3.10 Graphical Validation and Feature Importance");
+  b.h2("3.10 Blind-Well Test and Final Model Selection");
+  b.p("A random 80:20 split of depth-ordered drilling data can give optimistic results, because samples from neighbouring depths fall into both the training and testing sets. As required by the methodology, the selected model must also predict ROP for **previously unseen drilling data**. All trained models are therefore additionally applied to a completely separate well (the *blind well*), which is cleaned with the same procedure but never used for training, tuning or feature selection. The final model is selected with the following criterion, which rewards models that are accurate on the test set *and* generalize to a new well:");
+  b.equation("Selection score = ½ ( R^{2}_{test} + R^{2}_{blind} )");
+  b.p("The final model is saved (joblib) and documented in a model card together with its input parameters, algorithm and architecture, hyperparameters, performance metrics, training range of every input and prediction plots.");
+
+  b.h2("3.11 Graphical Validation and Feature Importance");
   b.bullets(["**Actual vs predicted ROP** scatter plot with the 1:1 line.", "**Prediction error plot** — distribution of Error = ROP_{actual} − ROP_{predicted}.",
     "**Residual plot** — residuals against predicted ROP, to detect systematic errors.",
     "**Feature importance** bar charts for the Random Forest and Decision Tree models, showing the relative contribution of WOB, RPM, torque, depth, flow rate, mud density and SPP."]);
 
-  b.h2("3.11 Software and Tools");
+  b.h2("3.12 Software and Tools");
   b.table("Software and tools used in the project", ["Tool / library", "Purpose"], [
     ["Python 3.11+", "Programming language for the complete workflow"], ["Jupyter Notebook / VS Code / Google Colab", "Development environment"],
     ["pandas, NumPy", "Data loading, cleaning and numerical computation"], ["Matplotlib, Seaborn", "Graphs: histograms, box plots, heatmaps, validation plots"],
@@ -453,26 +495,27 @@ function chapter3(b, kind) {
     ["Git / GitHub", "Version control and backup of code and results"], ["Mendeley / EndNote", "Reference management"], ["Microsoft Word", "Thesis writing"],
   ], [3, 5], { leftAll: true });
 
-  b.h2("3.12 Experimental (Computational) Procedure");
+  b.h2("3.13 Experimental (Computational) Procedure");
   b.numbered([
     "Import the drilling data (CSV/Excel) into Python with pandas and rename columns to standard names (WOB, RPM, Torque, Q, MW, SPP, Bit_Dia, Depth, ROP).",
     "Apply the cleaning steps of Section 3.3 and record the number of records removed at each step.",
     "Generate descriptive statistics and the EDA graphs of Section 3.4.",
     "Compute Pearson correlation, mutual information and random-forest importance; finalize the input features.",
-    "Split the data 80:20 (random_state = 42 for reproducibility) and standardize the inputs using the training set statistics.",
+    "Split the data 80:20 (random_state = 42 for reproducibility); impute and standardize the inputs using training-set statistics only.",
     "For each of the five models, run grid search with 5-fold cross-validation, select the best hyperparameters and retrain on the full training set.",
     "Predict ROP on the test set; calculate MAE, MSE, RMSE, R² and training time.",
     "Produce the actual-vs-predicted, residual, error-distribution and feature-importance plots.",
-    "Compare the models, select the final model and save it (joblib) together with its inputs, hyperparameters and metrics.",
-    "Use the final model to predict ROP for previously unseen drilling data.",
+    "Apply all models to the blind well (previously unseen drilling data) and calculate the same metrics.",
+    "Select the final model with the selection score of Section 3.10 and save it (joblib) with its model card.",
+    "Run the automated verification tests (pytest) to confirm the formulas, data split and saved results.",
   ]);
 
   if (kind === "proposal") {
-    b.h2("3.13 Expected Outcomes");
+    b.h2("3.14 Expected Outcomes");
     b.bullets(["A cleaned and documented drilling dataset suitable for ML.", "EDA graphs explaining how each drilling parameter affects ROP.",
       "Five trained and tuned ML models with a comparison table (MAE, RMSE, R², training time).",
       "Validation graphs and a ranking of the most influential drilling parameters.", "A saved final ROP prediction model and reproducible Python code."]);
-    b.h2("3.14 Work Plan");
+    b.h2("3.15 Work Plan");
     b.figure("diagram_gantt.png", "Proposed project schedule (Gantt chart)", 6.2);
   }
 }
@@ -486,11 +529,11 @@ function chapter4(b) {
   // model row indexes: 0 name,1 TrainR2,2 TrainRMSE,3 CV RMSE,4 MAE,5 MSE,6 RMSE,7 R2,8 train time,9 tune time
   b.chapter("Results and Discussion");
   b.note("DRAFT NOTE — demonstration results",
-    "All numbers, tables and graphs in this chapter were produced by running the project's Python code on the synthetic demonstration dataset described in Section 3.2.1. They show the expected format and the type of discussion required. Before submission, run the same code on the real field/Volve dataset (python code/rop_pipeline.py --data data/your_file.csv); all figures and result files will be regenerated automatically, and the numbers and discussion in this chapter must then be updated.");
+    "All numbers, tables and graphs in this chapter were produced by running the project's Python code on the synthetic demonstration dataset described in Section 3.2.1. They show the expected format and the type of discussion required. Before submission, run the same code on the real field/Volve dataset (python code/rop_pipeline.py --data data/your_file.csv --blind data/second_well.csv); all figures and result files will be regenerated automatically, and the numbers and discussion in this chapter must then be updated.");
 
   b.h2("4.1 Data Cleaning Results");
   const tC = b.nextTab();
-  b.p(`${tC} shows the number of records remaining after each cleaning step, and the following table lists the missing and unrealistic values found in each parameter. Of the ${D.cleaning[0][1]} raw records, ${D.cleaning[D.cleaning.length - 1][1]} (${(100 * D.cleaning[D.cleaning.length - 1][1] / D.cleaning[0][1]).toFixed(1)}%) were retained for modelling. Missing input values were filled with the column median, and ${D.summary.n_outliers} ROP spikes above ${f2(D.summary.outlier_bounds[1])} ft/hr were removed by the 3×IQR rule.`);
+  b.p(`${tC} shows the number of records remaining after each cleaning step, and the following table lists the missing and unrealistic values found in each parameter. Of the ${D.cleaning[0][1]} raw records, ${D.cleaning[D.cleaning.length - 1][1]} (${(100 * D.cleaning[D.cleaning.length - 1][1] / D.cleaning[0][1]).toFixed(1)}%) were retained for modelling. Missing input values were kept and later imputed with the training-set median inside the model pipeline, and ${D.summary.n_outliers} ROP spikes above ${f2(D.summary.outlier_bounds[1])} ft/hr were removed by the 3×IQR rule.`);
   b.table("Records remaining after each data-cleaning step", ["Cleaning step", "Number of records"], D.cleaning, [5, 2]);
   b.table("Missing and physically unrealistic values detected in each parameter", ["Parameter", "Missing values", "Unrealistic values"], D.quality, [2.5, 2, 2]);
 
@@ -512,10 +555,16 @@ function chapter4(b) {
   b.p("The scatter plots show wide scatter for every single parameter, which means that no single parameter can explain ROP alone; the effect of one parameter depends on the others. The ROP–depth log shows cyclic changes caused by changing formation layers superimposed on a general decrease of ROP with depth. These observations justify the use of multivariate, nonlinear machine-learning models.");
 
   b.h2("4.4 Feature Selection Results");
-  b.table("Feature relevance scores for ROP (sorted by mutual information)", ["Feature", "Pearson r", "|r|", "Mutual information", "RF importance"],
-    D.fs.map((r) => [r[0] === "MW" ? "ρ (MW)" : r[0] === "Bit_Dia" ? "D (Bit_Dia)" : r[0], ...r.slice(1).map(f3)]), [2, 1.4, 1.2, 1.8, 1.6]);
+  b.table("Feature relevance scores for ROP, computed on the training set (sorted by mutual information)", ["Feature", "Pearson r", "|r|", "Mutual information", "RF importance", "RFE rank"],
+    D.fs.map((r) => [r[0] === "MW" ? "ρ (MW)" : r[0] === "Bit_Dia" ? "D (Bit_Dia)" : r[0], ...r.slice(1, 5).map(f3), String(r[5])]), [1.8, 1.2, 1, 1.6, 1.5, 1.1]);
   b.figure("feature_selection.png", "Absolute Pearson correlation and mutual information of each feature with ROP", 6.2);
-  b.p("Depth has the highest mutual information with ROP, followed by mud density and WOB. RPM has a modest linear correlation but a high random-forest importance, showing that its effect is nonlinear and interacts with other parameters. The correlation matrix also shows that several input pairs are highly correlated — mud density and depth (r = 0.97), flow rate and SPP (r = 0.91) and bit diameter and depth (r = −0.91) — because these parameters change together from one hole section to the next. Since all eight parameters show non-zero relevance, and tree-based models and the regularized ANN are not seriously affected by such multicollinearity, all eight features were retained as model inputs, as proposed in the methodology. However, the individual coefficients of the linear regression model should not be interpreted physically, and removing redundant features (e.g. mud density) should be tested with RFE on the real dataset.");
+  const nm = { MW: "mud density", Q: "flow rate", SPP: "SPP", Bit_Dia: "bit diameter", Depth: "depth", WOB: "WOB", RPM: "RPM", Torque: "torque" };
+  const pairs = D.corr_pairs.map((q) => `${nm[q[0]]} and ${nm[q[1]]} (r = ${q[2].toFixed(2).replace("-", "−")})`).join(", ");
+  b.p(`Depth has the highest mutual information with ROP, followed by mud density and WOB. RPM has a modest linear correlation but a high random-forest importance, showing that its effect is nonlinear and interacts with other parameters. The correlation matrix also shows that several input pairs are highly correlated — ${pairs} — because these parameters change together from one hole section to the next.`);
+  const rfe = D.rfe, nOpt = D.summary.rfe_optimum_n_features, r8 = rfe[rfe.length - 1], rO = rfe[nOpt - 1];
+  const fR = b.nextFig();
+  b.figure("feature_rfe.png", "Recursive feature elimination: cross-validated RMSE versus number of features", 4.6);
+  b.p(`${fR} shows the RFECV result. The cross-validated RMSE falls sharply up to about three to four features and is almost flat afterwards: the optimum (${nOpt} features, CV RMSE = ${rO[1].toFixed(2)} ft/hr) differs from using all eight features (CV RMSE = ${r8[1].toFixed(2)} ft/hr) by less than the standard deviation between folds (≈ ${r8[2].toFixed(2)} ft/hr). Since removing features gives no statistically meaningful improvement, all eight parameters show non-zero relevance, and tree-based models and the regularized ANN are not seriously affected by multicollinearity, all eight features were retained as model inputs, as proposed in the methodology. The individual coefficients of the linear regression model should, however, not be interpreted physically.`);
 
   b.h2("4.5 Model Training and Optimum Hyperparameters");
   const bp = D.summary.best_params;
@@ -525,20 +574,30 @@ function chapter4(b) {
 
   b.h2("4.6 Model Performance and Comparison");
   const tP = b.nextTab();
-  b.p(`${tP} compares the performance of all models on the unseen test data. The best model is highlighted.`);
+  b.p(`${tP} compares the performance of all models on the unseen test data. The final model is highlighted.`);
   b.table("Performance comparison of the machine-learning models on the test set", ["Model", "MAE (ft/hr)", "MSE", "RMSE (ft/hr)", "R²", "CV RMSE", "Training time (s)"],
     names.map((n) => [n, f2(M[n][4]), f2(M[n][5]), f2(M[n][6]), f3(M[n][7]), f2(M[n][3]), f3(M[n][8])]), [2.2, 1.2, 1.2, 1.3, 1, 1.1, 1.3],
     { highlightRow: names.indexOf(best) });
-  b.figure("eval_model_comparison.png", "Comparison of R², RMSE and MAE of the models on the test set (best model highlighted)", 6.4);
+  b.figure("eval_model_comparison.png", "Comparison of R², RMSE and MAE of the models on the test set (final model highlighted)", 6.4);
   const rank = [...names].sort((a, c2) => M[c2][7] - M[a][7]);
-  b.p(`The linear regression baseline achieved R² = ${f3(M["Linear Regression"][7])} and RMSE = ${f2(M["Linear Regression"][6])} ft/hr, confirming that a linear equation cannot fully describe ROP. The single decision tree performed similarly to linear regression (R² = ${f3(M["Decision Tree"][7])}). The three advanced nonlinear models performed best: ${rank[0]} (R² = ${f3(M[rank[0]][7])}, RMSE = ${f2(M[rank[0]][6])} ft/hr), ${rank[1]} (R² = ${f3(M[rank[1]][7])}) and ${rank[2]} (R² = ${f3(M[rank[2]][7])}). Compared with the baseline, the best model reduced RMSE by ${(100 * (1 - M[best][6] / M["Linear Regression"][6])).toFixed(1)}%. The difference between the ANN and random forest is small, so both can be considered satisfactory. Training times are all below a few seconds, so computational cost is not a limiting factor for this data size.`);
+  b.p(`The linear regression baseline achieved R² = ${f3(M["Linear Regression"][7])} and RMSE = ${f2(M["Linear Regression"][6])} ft/hr, confirming that a linear equation cannot fully describe ROP. The single decision tree performed similarly to linear regression (R² = ${f3(M["Decision Tree"][7])}). The three advanced nonlinear models performed best: ${rank[0]} (R² = ${f3(M[rank[0]][7])}, RMSE = ${f2(M[rank[0]][6])} ft/hr), ${rank[1]} (R² = ${f3(M[rank[1]][7])}) and ${rank[2]} (R² = ${f3(M[rank[2]][7])}). Compared with the baseline, the best model reduced RMSE by ${(100 * (1 - M[best][6] / M["Linear Regression"][6])).toFixed(1)}%. The difference between the best models on the test set is small (ΔR² < 0.01), so they can be considered equally accurate on this split; the blind-well test in Section 4.8 is used to separate them. Training times are all below a few seconds, so computational cost is not a limiting factor for this data size.`);
 
   b.h2("4.7 Overfitting Analysis");
   b.table("Training versus testing performance (overfitting check)", ["Model", "Train R²", "Test R²", "Train RMSE", "Test RMSE", "Gap in R²"],
     names.map((n) => [n, f3(M[n][1]), f3(M[n][7]), f2(M[n][2]), f2(M[n][6]), f3(M[n][1] - M[n][7])]), [2.3, 1.2, 1.2, 1.3, 1.3, 1.1]);
-  b.p(`Random forest shows the largest gap between training and testing R² (${f3(M["Random Forest"][1])} vs ${f3(M["Random Forest"][7])}), which is typical for deep trees that partly memorize training data; nevertheless its test accuracy remains high. The ANN, with L2 regularization and early stopping, shows a smaller gap, indicating good generalization. The decision tree also shows a noticeable gap, which explains its weaker test performance compared with the ensemble.`);
+  b.p(`The decision tree (${f3(M["Decision Tree"][1])} vs ${f3(M["Decision Tree"][7])}) and random forest (${f3(M["Random Forest"][1])} vs ${f3(M["Random Forest"][7])}) show the largest gaps between training and testing R², which is typical for deep trees that partly memorize the training data. The ANN, with L2 regularization and early stopping, shows a much smaller gap (${f3(M["ANN (MLP)"][1] - M["ANN (MLP)"][7])}), and linear regression shows almost none because it is too simple to overfit.`);
 
-  b.h2("4.8 Graphical Validation");
+  b.h2("4.8 Blind-Well Test and Final Model Selection");
+  const order = [...names].sort((a, c2) => D.score[c2] - D.score[a]);
+  b.p(`All models were applied to the blind well (${D.summary.n_blind} records after cleaning), which was never used for training, tuning or feature selection. The results and the selection score of Section 3.10 are given below.`);
+  b.table("Blind-well performance and final model selection score", ["Model", "Test R²", "Blind MAE", "Blind RMSE", "Blind R²", "Selection score"],
+    order.map((n) => [n, f3(M[n][7]), f2(BL[n].MAE), f2(BL[n].RMSE), f3(BL[n].R2), f3(D.score[n])]), [2.3, 1.1, 1.2, 1.3, 1.1, 1.4],
+    { highlightRow: order.indexOf(best) });
+  b.figure("eval_blind_well.png", `Measured and predicted ROP for the blind well (${best})`, 6.0);
+  const drop = (n) => f3(M[n][7] - BL[n].R2);
+  b.p(`The blind-well test changes the picture considerably. The tree-based models, which were among the best on the random test set, lost most accuracy on the new well (Random Forest R² fell by ${drop("Random Forest")} and the decision tree by ${drop("Decision Tree")}). Because decision trees split on fixed depth thresholds, they partly memorize the depth–formation pattern of the training well, which does not transfer to a well with different formation layers. The smoother models — ANN, SVR and even linear regression — kept R² ≈ ${f2(BL["ANN (MLP)"].R2)} on the blind well, i.e. they generalize better. The ${best} obtained the highest selection score (${f3(D.score[best])}) and was therefore selected as the final ROP prediction model. Its blind-well RMSE of ${f2(BL[best].RMSE)} ft/hr is a more realistic estimate of the error to be expected on a new well than the random-split test RMSE of ${f2(M[best][6])} ft/hr.`);
+
+  b.h2("4.9 Graphical Validation");
   const fAV = b.nextFig();
   b.figure("eval_actual_vs_predicted.png", "Actual versus predicted ROP for each model on the test set", 6.4);
   b.p(`In ${fAV}, points close to the dashed 1:1 line indicate accurate predictions. The linear model shows a curved pattern (under-prediction at high ROP and over-prediction at low ROP), while the random forest, SVR and ANN points are more tightly grouped around the line. All models tend to under-predict the highest ROP values (> 90 ft/hr), because few training samples exist in that range.`);
@@ -547,11 +606,11 @@ function chapter4(b) {
   b.p("The residual plots of the nonlinear models are scattered randomly around zero, with no strong trend, indicating no major systematic bias. The spread of residuals increases with predicted ROP (heteroscedasticity), which is expected because measurement noise in ROP is proportional to its magnitude. The error histograms are approximately centred at zero, and the best models show the narrowest distributions.");
   b.figure("eval_depth_track.png", `Measured and predicted ROP (${best}) versus depth for the test samples`, 2.8);
 
-  b.h2("4.9 Feature Importance Analysis");
+  b.h2("4.10 Feature Importance Analysis");
   b.figure("eval_feature_importance.png", "Feature importance from the Random Forest and Decision Tree models", 6.2);
   b.p("Both tree-based models rank depth as the most important parameter, followed by WOB and RPM. Depth acts as a proxy for rock strength and compaction, which control how easily the rock is drilled. WOB and RPM are the two parameters that the driller directly controls, which shows that ROP can be improved by optimizing these settings. Mud density, flow rate and SPP have lower importance in this dataset, partly because their information is already contained in depth and hole size. These results agree with the Bourgoyne–Young model, in which formation strength, depth, bit weight and rotary speed are key terms [6].");
 
-  b.h2("4.10 Sample Calculation");
+  b.h2("4.11 Sample Calculation");
   const W = D.worked;
   const err = W.map((r) => r[8] - r[9]);
   const mae = err.reduce((a, e) => a + Math.abs(e), 0) / err.length;
@@ -564,11 +623,12 @@ function chapter4(b) {
   b.p(`MSE = (1/5)(${err.map((e) => (e * e).toFixed(2)).join(" + ")}) = **${mse.toFixed(2)} (ft/hr)²**,   RMSE = √${mse.toFixed(2)} = **${Math.sqrt(mse).toFixed(2)} ft/hr**`);
   b.p("The same calculations, applied to all test samples, give the values reported in the performance comparison table.");
 
-  b.h2("4.11 Discussion of Findings");
+  b.h2("4.12 Discussion of Findings");
   b.bullets([
     "Nonlinear ML models (ANN, random forest, SVR) predicted ROP considerably better than the linear baseline, confirming the nonlinear nature of ROP.",
     "Ensemble learning (random forest) greatly improved on a single decision tree by reducing variance.",
-    "The ANN and random forest gave comparable accuracy; random forest additionally provides feature importance and needs less tuning, while the ANN generalized slightly better.",
+    "On the random test set the ANN and random forest gave comparable accuracy, but on the blind well the random forest dropped sharply while the ANN remained robust; a random split alone would therefore have led to the wrong model choice.",
+    "On the blind well, ANN, SVR and linear regression performed almost equally, which shows that the remaining error is dominated by formation differences that the eight surface parameters cannot fully describe.",
     "Depth (formation strength), WOB and RPM were the most influential parameters, in agreement with classical drilling theory.",
     "Prediction errors increase at very high ROP, where data are scarce; more data from fast-drilling intervals would improve the models.",
   ]);
@@ -582,18 +642,19 @@ function chapter5(b) {
   b.h2("5.1 Major Findings");
   b.bullets([
     `A complete, reproducible Python workflow for ROP prediction was developed, covering data cleaning, EDA, feature selection, model development, hyperparameter tuning, evaluation and model saving.`,
-    `On the demonstration dataset, the ${best} achieved the best test performance (R² = ${M[best][7].toFixed(3)}, RMSE = ${M[best][6].toFixed(2)} ft/hr), closely followed by Random Forest (R² = ${M["Random Forest"][7].toFixed(3)}).`,
+    `On the random test set, ${TOP_TEST} (R² = ${M[TOP_TEST][7].toFixed(3)}) and the ANN (R² = ${M["ANN (MLP)"][7].toFixed(3)}) were the most accurate models.`,
+    `On a blind well never used in training, the ${best} remained robust (R² = ${BL[best].R2.toFixed(3)}, RMSE = ${BL[best].RMSE.toFixed(2)} ft/hr) whereas Random Forest dropped to R² = ${BL["Random Forest"].R2.toFixed(3)}; the ${best} was selected as the final model.`,
     `The linear regression baseline (R² = ${M["Linear Regression"][7].toFixed(3)}) and single decision tree (R² = ${M["Decision Tree"][7].toFixed(3)}) were clearly less accurate.`,
     "Depth, WOB and RPM were identified as the most influential parameters on ROP.",
   ]);
   b.h2("5.2 Conclusions");
-  b.p("Machine-learning models can predict the rate of penetration from commonly available surface drilling parameters with good accuracy. The relationship between drilling parameters and ROP is strongly nonlinear, so nonlinear and ensemble models should be preferred over linear regression. A careful data-cleaning procedure and evaluation on a separate, unseen test set are essential for obtaining reliable and honest performance estimates. The selected final model has been saved together with its input parameters, hyperparameters and performance metrics, and can be used to predict ROP for new drilling data from similar wells. **[Update these conclusions with the final results from the real dataset.]**");
+  b.p("Machine-learning models can predict the rate of penetration from commonly available surface drilling parameters with good accuracy. The relationship between drilling parameters and ROP is strongly nonlinear, so nonlinear and ensemble models should be preferred over linear regression. A careful data-cleaning procedure, leakage-free pre-processing and evaluation on a separate, unseen well are essential for obtaining reliable and honest performance estimates: models that look best on a random split can generalize poorly to a new well. The selected final model has been saved together with its input parameters, hyperparameters and performance metrics, and can be used to predict ROP for new drilling data from similar wells. **[Update these conclusions with the final results from the real dataset.]**");
   b.h2("5.3 Limitations");
   b.bullets([
     "The results in this draft are based on a synthetic demonstration dataset; final conclusions depend on the real field dataset.",
     "Models trained on one field or well may not generalize to wells with different formations, bit types or drilling practices without retraining.",
     "Important factors such as bit type, bit wear, rock strength (UCS) and lithology were not included as inputs.",
-    "A random train–test split may give optimistic results for continuous depth-based data; a well-based or depth-based split is a stricter test.",
+    "A random train–test split gives optimistic results for depth-based data; only one blind well was available for the stricter well-based test.",
     "The ANN and random forest are less interpretable than empirical equations.",
   ]);
   b.h2("5.4 Recommendations");
@@ -649,10 +710,12 @@ function appendix(b) {
   b.table("Project files", ["File / folder", "Content"], [
     ["code/generate_synthetic_data.py", "Generates the synthetic demonstration dataset (for testing only)"],
     ["code/rop_pipeline.py", "Complete workflow: cleaning, EDA, feature selection, 5 models, tuning, evaluation, plots, model saving"],
-    ["code/make_diagrams.py", "Methodology flowchart and conceptual diagrams"], ["data/", "Raw and cleaned datasets (CSV)"],
+    ["code/make_diagrams.py", "Methodology flowchart and conceptual diagrams"], ["code/verify.py", "Runs all automated tests and re-computes every metric independently"],
+    ["tests/test_pipeline.py", "44 automated tests: formulas, cleaning, split, leakage, models, saved model, app pages"],
+    ["app/streamlit_app.py", "ROP·AI web application"], ["data/", "Raw, cleaned and blind-well datasets (CSV)"],
     ["figures/", "All graphs and diagrams (PNG)"], ["results/", "Tables of results (CSV/JSON)"], ["models/final_rop_model.joblib", "Saved final ROP prediction model"],
   ], [3, 5], { leftAll: true });
-  b.p("**Commands:**  python code/rop_pipeline.py --data data/your_field_data.csv", { align: AlignmentType.LEFT });
+  b.p("**Commands:**  python code/rop_pipeline.py --data data/your_field_data.csv --blind data/your_blind_well.csv   then   python code/verify.py", { align: AlignmentType.LEFT });
   b.unnumbered("APPENDIX B — PROJECT SCHEDULE");
   b.ch = "B"; b.fig = 0;
   b.figure("diagram_gantt.png", "Project schedule (Gantt chart)", 6.2);
@@ -701,16 +764,13 @@ function makeDoc(front, main) {
 }
 
 async function build() {
-  // ---- Proposal (Chapters 1-3)
-  let f = new Builder(); titlePage(f, "proposal"); abstractPage(f, "proposal"); tocPages(f); nomenclature(f);
-  let m = new Builder(); chapter1(m); chapter2(m); chapter3(m, "proposal"); references(m);
-  fs.writeFileSync(path.join(__dirname, "ROP_FYP_Proposal_Ch1-3.docx"), await Packer.toBuffer(makeDoc(f.out, m.out)));
-
-  // ---- Complete thesis draft (Chapters 1-5)
-  f = new Builder(); titlePage(f, "complete"); submittedPage(f); declarationPages(f); abstractPage(f, "complete"); tocPages(f); nomenclature(f);
-  m = new Builder(); chapter1(m); chapter2(m); chapter3(m, "complete"); chapter4(m); chapter5(m); references(m); appendix(m);
-  fs.writeFileSync(path.join(__dirname, "ROP_FYP_Complete_Thesis_Draft.docx"), await Packer.toBuffer(makeDoc(f.out, m.out)));
+  await buildOne("ROP_FYP_Proposal_Ch1-3",
+    (f, toc) => { titlePage(f, "proposal"); abstractPage(f, "proposal"); tocPages(f, toc); nomenclature(f); },
+    (m) => { chapter1(m); chapter2(m); chapter3(m, "proposal"); references(m); });
+  await buildOne("ROP_FYP_Complete_Thesis_Draft",
+    (f, toc) => { titlePage(f, "complete"); submittedPage(f); declarationPages(f); abstractPage(f, "complete"); tocPages(f, toc); nomenclature(f); },
+    (m) => { chapter1(m); chapter2(m); chapter3(m, "complete"); chapter4(m); chapter5(m); references(m); appendix(m); });
   console.log("Documents written to", __dirname);
 }
 if (require.main === module) build().catch((e) => { console.error(e); process.exit(1); });
-module.exports = { Builder, makeDoc, runs, TITLE, TITLE_CASE, SUPERVISOR, MEMBERS, BATCH, DATE, D };
+module.exports = { Builder, makeDoc, runs, buildOne, tocPages, TITLE, TITLE_CASE, SUPERVISOR, MEMBERS, BATCH, DATE, D };

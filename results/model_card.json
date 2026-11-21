@@ -1,0 +1,95 @@
+{
+  "final_model": "ANN (MLP)",
+  "algorithm": "MLPRegressor",
+  "pipeline": [
+    "SimpleImputer",
+    "StandardScaler",
+    "MLPRegressor",
+    "StandardScaler (target)"
+  ],
+  "input_parameters": {
+    "WOB": "WOB (klbf)",
+    "RPM": "RPM (rev/min)",
+    "Torque": "Torque (kft\u00b7lbf)",
+    "Q": "Flow rate Q (gpm)",
+    "MW": "Mud density \u03c1 (ppg)",
+    "SPP": "SPP (psi)",
+    "Bit_Dia": "Bit diameter D (in)",
+    "Depth": "Depth (ft)"
+  },
+  "target": "ROP (ft/hr)",
+  "hyperparameters": {
+    "alpha": 0.01,
+    "hidden_layer_sizes": [
+      64,
+      32,
+      16
+    ],
+    "learning_rate_init": 0.001
+  },
+  "test_metrics": {
+    "MAE": 6.6146,
+    "MSE": 81.4905,
+    "RMSE": 9.0272,
+    "R2": 0.8199
+  },
+  "cv_rmse": 9.3193,
+  "training_time_s": 1.6072,
+  "rfe_optimum_n_features": 5,
+  "training_range": {
+    "WOB": [
+      10.03,
+      40.0
+    ],
+    "RPM": [
+      60.0,
+      180.0
+    ],
+    "Torque": [
+      1.97,
+      27.14
+    ],
+    "Q": [
+      350.0,
+      1099.4
+    ],
+    "MW": [
+      9.01,
+      13.55
+    ],
+    "SPP": [
+      805.0,
+      5599.0
+    ],
+    "Bit_Dia": [
+      8.5,
+      17.5
+    ],
+    "Depth": [
+      2005.2,
+      11997.7
+    ]
+  },
+  "blind_well_metrics": {
+    "MAE": 8.6208,
+    "MSE": 119.853,
+    "RMSE": 10.9477,
+    "R2": 0.7085
+  },
+  "files": {
+    "model": "models/final_rop_model.joblib",
+    "all_models": "models/all_models.joblib"
+  },
+  "architecture": {
+    "input_neurons": 8,
+    "hidden_layers": [
+      64,
+      32,
+      16
+    ],
+    "activation": "relu",
+    "output_neurons": 1,
+    "solver": "adam",
+    "iterations_trained": 229
+  }
+}

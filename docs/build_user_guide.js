@@ -4,15 +4,14 @@
  */
 const fs = require("fs");
 const path = require("path");
-const { Packer, AlignmentType, TableOfContents, ImageRun, Paragraph } = require("docx");
-const { Builder, makeDoc, TITLE, SUPERVISOR, MEMBERS, BATCH, D } = require("./build_thesis");
+const { AlignmentType, ImageRun, Paragraph } = require("docx");
+const { Builder, buildOne, tocPages, TITLE, SUPERVISOR, MEMBERS, BATCH, D } = require("./build_thesis");
 
 const SS = "../docs/screenshots/";
 const best = D.summary.best_model;
 const M = Object.fromEntries(D.models.map((r) => [r[0], r]));
 
-function front() {
-  const b = new Builder();
+function front(b, toc) {
   b.center("ROP·AI", { size: 56, bold: true, before: 900, after: 120, color: "EB6834" });
   b.center("Web Application for Rate of Penetration Prediction", { size: 30, bold: true, after: 120 });
   b.center("USER GUIDE & TECHNICAL DOCUMENTATION", { size: 24, after: 500 });
@@ -24,13 +23,11 @@ function front() {
   b.center(BATCH, { after: 300 });
   b.center(`Supervisor: ${SUPERVISOR}`, { after: 120 });
   MEMBERS.forEach((m) => b.center(m, { after: 40 }));
-  b.unnumbered("CONTENTS");
-  b.push(new TableOfContents("Contents", { hyperlink: true, headingStyleRange: "1-2" }));
-  return b.out;
+  tocPages(b, toc, false);
 }
 
-function body() {
-  const b = new Builder();
+function body(b) {
+  const BLD = Object.fromEntries((D.blind || []).map((r) => [r[0], r[4]]));
 
   b.chapter("Introduction");
   b.h2("1.1 What is ROP·AI?");
@@ -38,11 +35,12 @@ function body() {
   b.h2("1.2 Main features");
   b.table("Features of ROP·AI", ["Page", "What it does"], [
     ["🏠 Overview", "Project summary, key numbers (records, features, best model, best R²), workflow steps and model leaderboard"],
-    ["🎯 Predict ROP", "Live ROP prediction from 8 sliders, gauge, time to drill 1,000 ft, predictions of all 5 models, sensitivity curve"],
+    ["🎯 Predict ROP", "Live ROP prediction from 8 sliders with ± test-RMSE, gauge, time to drill 1,000 ft, training-range check, predictions of all 5 models, sensitivity curve"],
     ["⚙️ Optimizer", "Searches WOB × RPM combinations within limits and marks the setting with the highest predicted ROP"],
     ["📊 Data Explorer", "Interactive scatter plots, histograms, correlation heatmap, ROP–depth log and data table; accepts your own CSV"],
-    ["📈 Model Results", "Comparison table (MAE, MSE, RMSE, R², CV RMSE, training time), actual-vs-predicted, residuals, feature importance"],
+    ["📈 Model Results", "Comparison table (MAE, MSE, RMSE, R², CV RMSE, training time), actual-vs-predicted, residuals, feature importance, blind-well test and final model selection"],
     ["📁 Batch Prediction", "Upload a CSV of drilling data, get ROP predictions for every row, accuracy metrics and a downloadable result file"],
+    ["📄 Reports", "Downloads of the thesis, proposal, user guide and verification report (Word + PDF), all figures, result tables, final model and model card; figure gallery"],
     ["ℹ️ About", "Aim, models, team, tech stack, inputs/outputs and the methodology flowchart"],
   ], [2, 6], { leftAll: true });
   b.h2("1.3 Inputs and output");
@@ -86,12 +84,13 @@ function body() {
     "Start the app:  **streamlit run app/streamlit_app.py**",
     "The browser opens automatically at **http://localhost:8501**. If not, open that address manually.",
     "To stop the app, press **Ctrl + C** in the terminal.",
+    "(Optional) Verify everything with the automated tests:  **python -m pytest -q tests/**  — all tests should pass.",
   ]);
   b.note("Tip for the viva", "Start the app before the presentation and keep the browser tab open. Press F11 for full-screen mode. Everything runs offline on the laptop once the libraries are installed.");
 
   b.chapter("Using the Application");
   b.h2("4.1 Sidebar");
-  b.p("The sidebar on the left contains the page menu and the **Prediction model** selector. By default the best model (highest test R²) is selected. Changing the model changes the predictions on the Predict, Optimizer and Batch pages. The card below it shows the selected model's test R² and RMSE. The yellow notice reminds the user that the current models are trained on demonstration data.");
+  b.p("The sidebar on the left contains the page menu and the **Prediction model** selector. By default the best model (highest test R²) is selected. Changing the model changes the predictions on the Predict, Optimizer and Batch pages. The card below it shows the selected model's test R² and RMSE. The **ROP units** switch shows all predicted ROP values in ft/hr or m/hr. The yellow notice reminds the user that the current models are trained on demonstration data.");
   b.h2("4.2 Overview page");
   b.figure(SS + "01_overview.png", "Overview page", 6.3);
   b.p(`The Overview page introduces the project. The four cards show the number of records used, the eight input features, the best model (${best}) and its test R² (${M[best][7].toFixed(3)}). The left column lists the eight steps of the methodology and the right column shows the model leaderboard, where the best model is highlighted in orange.`);
@@ -101,7 +100,9 @@ function body() {
     "The large orange card shows the predicted ROP in ft/hr and m/hr; the gauge shows it on a 0–150 ft/hr scale.",
     "The card below estimates the on-bottom time needed to drill 1,000 ft at this ROP.",
     "“What do all five models say?” compares the predictions of all models for the same input — useful to explain model differences in the viva.",
-    "In “Sensitivity”, choose a parameter (e.g. WOB); the curve shows how predicted ROP changes when only that parameter changes, and the orange dot marks the current setting."]);
+    "In “Sensitivity”, choose a parameter (e.g. WOB); the curve shows how predicted ROP changes when only that parameter changes, the green band marks the training range and the orange dot marks the current setting."]);
+  b.p("**Training-range check.** Machine-learning models are only reliable inside the range of the data they were trained on. Below the prediction, a green message confirms that all inputs are inside the training range. If any input is outside it, a yellow warning lists the parameter and its training range, as shown below — the prediction is then an extrapolation and must be treated with caution.");
+  b.figure(SS + "02b_range_warning.png", "Training-range warning when WOB is set above the range of the training data", 6.3);
   b.h2("4.4 Optimizer page");
   b.figure(SS + "03_optimizer.png", "Drilling parameter optimizer", 6.3);
   b.p("The optimizer fixes depth, mud density, flow rate, bit diameter and SPP at the chosen values and evaluates the model on a 40 × 40 grid of WOB and RPM values up to the maximum allowable limits. Torque is estimated from WOB using the Torque/WOB ratio. The contour map shows predicted ROP (blue = slow, orange = fast) and the white star marks the optimum. The optimum WOB, RPM and the maximum predicted ROP are shown on the right. The result is a data-driven recommendation and must always be checked against bit ratings, vibration, hole cleaning and torque limits.");
@@ -111,13 +112,18 @@ function body() {
   b.h2("4.6 Model Results page");
   b.figure(SS + "05_model_results.png", "Model Results page", 6.3);
   b.p("The table compares all five models on the unseen test set; the best R² and RMSE are highlighted. The tabs show actual-vs-predicted scatter with the 1:1 line, residual plot and error histogram, bar charts of R², RMSE and MAE, and the feature importance of the Random Forest and Decision Tree models.");
+  b.p(`The last tab, **Blind well & final selection**, shows how every model performed on a completely separate well that was never used for training. It explains why the final model is the ${best}: Random Forest has the highest test R² (${M["Random Forest"][7].toFixed(3)}) but drops to ${(BLD["Random Forest"] ?? 0).toFixed(3)} on the new well, while the ${best} keeps ${(BLD[best] ?? 0).toFixed(3)}. The selection score is the mean of the test and blind-well R².`);
+  b.figure(SS + "05b_blind_well.png", "Blind-well test and final model selection", 6.3);
   b.h2("4.7 Batch Prediction page");
   b.figure(SS + "06_batch.png", "Batch Prediction page", 6.3);
   b.numbered(["Click **Download CSV template** to get a file with the correct column names.",
     "Fill it with your drilling data (one row per depth/time step) and upload it. Alternatively, tick “use the demo test set”.",
     "The app predicts ROP for every row. If the file also contains a measured ROP column, MAE, RMSE and R² are calculated and actual and predicted ROP are plotted against depth.",
     "Click **Download predictions** to save the results as CSV (opens in Excel)."]);
-  b.h2("4.8 About page");
+  b.h2("4.8 Reports page");
+  b.figure(SS + "08_reports.png", "Reports & Downloads page", 6.3);
+  b.p("The Reports page collects every deliverable: the thesis, proposal, user guide and verification report (Word and PDF), a ZIP of all figures, a ZIP of all result tables, the final trained model (.joblib) and its model card (.json). The model card shows the algorithm, pipeline, hyperparameters, ANN architecture, inputs and output, test and blind-well metrics and the training range of every input. A figure gallery at the bottom lets you browse all graphs and diagrams for the presentation.");
+  b.h2("4.9 About page");
   b.figure(SS + "07_about.png", "About page", 6.3);
   b.p("The About page summarizes the aim, models, team, technology stack, inputs and output, and contains the methodology flowchart. Replace the placeholders [Supervisor Name] and [Student 1–4] in app/streamlit_app.py with your real names.");
 
@@ -170,6 +176,8 @@ function body() {
     ["1", "Methodology, proposal (Ch. 1–3) and complete thesis draft (Ch. 1–5)", "✅ Done (draft)"],
     ["2", "Python pipeline: cleaning, EDA, 5 models, tuning, evaluation, plots", "✅ Done"],
     ["3", "ROP·AI web app and this user guide", "✅ Done"],
+    ["3a", "Leakage-free pipeline, RFE, blind-well test, model card and 44 automated tests", "✅ Done (all tests pass)"],
+    ["3b", "Requirements & verification report", "✅ Done"],
     ["4", "Obtain real drilling data (Volve or field) and convert to CSV", "⏳ Pending"],
     ["5", "Re-run pipeline on real data; update Chapter 4 and 5 numbers and discussion", "⏳ Pending"],
     ["6", "Fill names, roll numbers, supervisor and dates; update Word fields (TOC)", "⏳ Pending"],
@@ -181,7 +189,4 @@ function body() {
   return b.out;
 }
 
-Packer.toBuffer(makeDoc(front(), body())).then((buf) => {
-  fs.writeFileSync(path.join(__dirname, "ROP_AI_App_User_Guide.docx"), buf);
-  console.log("User guide written");
-});
+buildOne("ROP_AI_App_User_Guide", front, body).then(() => console.log("User guide written"));

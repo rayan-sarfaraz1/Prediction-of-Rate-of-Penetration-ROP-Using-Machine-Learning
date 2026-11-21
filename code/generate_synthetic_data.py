@@ -17,11 +17,13 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 
-RNG = np.random.default_rng(42)
-OUT = Path(__file__).resolve().parents[1] / "data" / "synthetic_drilling_data_raw.csv"
+DATA = Path(__file__).resolve().parents[1] / "data"
+OUT = DATA / "synthetic_drilling_data_raw.csv"
+OUT_BLIND = DATA / "synthetic_blind_well.csv"
 
 
-def generate(n: int = 3000) -> pd.DataFrame:
+def generate(n: int = 3000, seed: int = 42, inject: bool = True) -> pd.DataFrame:
+    RNG = np.random.default_rng(seed)
     depth = np.sort(RNG.uniform(2000, 12000, n))
 
     # Hole sections / bit sizes
@@ -73,6 +75,8 @@ def generate(n: int = 3000) -> pd.DataFrame:
         "ROP": rop.round(2),
     })
 
+    if not inject:
+        return df
     # ---- Inject realistic data-quality problems (to demonstrate cleaning) ----
     # 1) Duplicate records
     dup = df.sample(40, random_state=1)
@@ -98,3 +102,7 @@ if __name__ == "__main__":
     data = generate()
     data.to_csv(OUT, index=False)
     print(f"Saved {len(data)} rows -> {OUT}")
+    # A separate "blind" well (different random formation layers), never used in training:
+    blind = generate(n=800, seed=2026, inject=False)
+    blind.to_csv(OUT_BLIND, index=False)
+    print(f"Saved {len(blind)} rows -> {OUT_BLIND}")

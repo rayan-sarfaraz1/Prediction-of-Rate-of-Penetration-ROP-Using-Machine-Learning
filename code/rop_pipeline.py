@@ -27,7 +27,8 @@ import pandas as pd
 import seaborn as sns
 from sklearn.compose import TransformedTargetRegressor
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.feature_selection import mutual_info_regression
+from sklearn.feature_selection import RFECV, mutual_info_regression
+from sklearn.impute import SimpleImputer
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import GridSearchCV, KFold, train_test_split
@@ -96,9 +97,9 @@ def clean(df: pd.DataFrame):
     df = df.dropna(subset=[TARGET])
     log.append(("After removing rows with invalid/missing ROP", len(df)))
 
-    # Median imputation of features
-    medians = df[FEATURES].median()
-    df[FEATURES] = df[FEATURES].fillna(medians)
+    # NOTE: missing input values are NOT filled here. They are imputed with the median
+    # of the TRAINING set inside each model pipeline (SimpleImputer), so no information
+    # from the test set leaks into training.
 
     # Outliers in ROP: IQR rule (3 x IQR, conservative for drilling data)
     q1, q3 = df[TARGET].quantile([0.25, 0.75])
@@ -125,7 +126,7 @@ def eda(raw: pd.DataFrame, df: pd.DataFrame):
     # Histograms
     fig, axes = plt.subplots(3, 3, figsize=(7.2, 6.2))
     for ax, c in zip(axes.flat, cols):
-        ax.hist(df[c], bins=30, color=BLUE, edgecolor="white", linewidth=0.5)
+        ax.hist(df[c].dropna(), bins=30, color=BLUE, edgecolor="white", linewidth=0.5)
         ax.set_title(LABELS[c]); ax.set_ylabel("Count")
     fig.suptitle("Distribution of drilling parameters and ROP", fontsize=11, color=INK)
     fig.tight_layout(); save(fig, "eda_histograms.png")
@@ -139,7 +140,7 @@ def eda(raw: pd.DataFrame, df: pd.DataFrame):
                     flierprops=dict(marker="o", markersize=3, markerfacecolor=GREY, markeredgecolor="none"))
     axes[0].set_title("ROP before vs after cleaning"); axes[0].set_ylabel("ROP (ft/hr)")
     z = (df[FEATURES] - df[FEATURES].mean()) / df[FEATURES].std()
-    axes[1].boxplot([z[c] for c in FEATURES], tick_labels=FEATURES, widths=0.55, patch_artist=True,
+    axes[1].boxplot([z[c].dropna() for c in FEATURES], tick_labels=FEATURES, widths=0.55, patch_artist=True,
                     boxprops=dict(facecolor="#d6e6f8", color=BLUE),
                     medianprops=dict(color=ORANGE, linewidth=1.6),
                     flierprops=dict(marker="o", markersize=2.5, markerfacecolor=GREY, markeredgecolor="none"))
@@ -184,14 +185,24 @@ def eda(raw: pd.DataFrame, df: pd.DataFrame):
 # ----------------------------------------------------------------------------
 # 3. Feature selection
 # ----------------------------------------------------------------------------
-def feature_selection(df):
-    X, y = df[FEATURES], df[TARGET]
+def feature_selection(X_tr, y_tr):
+    """Feature relevance computed on the TRAINING set only (after train-set median imputation)."""
+    X = pd.DataFrame(SimpleImputer(strategy="median").fit_transform(X_tr), columns=FEATURES)
+    y = y_tr.reset_index(drop=True)
     pearson = X.corrwith(y)
     mi = pd.Series(mutual_info_regression(X, y, random_state=SEED), index=FEATURES)
     rf = RandomForestRegressor(n_estimators=200, random_state=SEED, n_jobs=-1).fit(X, y)
     rf_imp = pd.Series(rf.feature_importances_, index=FEATURES)
-    table = pd.DataFrame({"Pearson r": pearson, "|r|": pearson.abs(),
-                          "Mutual information": mi, "RF importance": rf_imp}).sort_values("Mutual information", ascending=False)
+
+    # Recursive feature elimination with 5-fold CV (Random Forest as estimator)
+    rfe = RFECV(RandomForestRegressor(n_estimators=100, random_state=SEED, n_jobs=-1), step=1, min_features_to_select=1,
+                cv=KFold(5, shuffle=True, random_state=SEED), scoring="neg_root_mean_squared_error", n_jobs=-1).fit(X, y)
+    table = pd.DataFrame({"Pearson r": pearson, "|r|": pearson.abs(), "Mutual information": mi,
+                          "RF importance": rf_imp, "RFE rank": pd.Series(rfe.ranking_, index=FEATURES)}
+                         ).sort_values("Mutual information", ascending=False)
+    n_feat = np.arange(1, len(FEATURES) + 1)
+    rfe_curve = pd.DataFrame({"n_features": n_feat, "cv_rmse": -rfe.cv_results_["mean_test_score"],
+                              "cv_rmse_std": rfe.cv_results_["std_test_score"]})
 
     fig, axes = plt.subplots(1, 2, figsize=(7.2, 3.2), sharey=False)
     s = table["|r|"].sort_values()
@@ -203,14 +214,24 @@ def feature_selection(df):
     for ax in axes:
         ax.grid(axis="y", visible=False)
     fig.tight_layout(); save(fig, "feature_selection.png")
-    return table
+
+    fig, ax = plt.subplots(figsize=(5.0, 3.0))
+    ax.errorbar(rfe_curve.n_features, rfe_curve.cv_rmse, yerr=rfe_curve.cv_rmse_std, color=BLUE, marker="o",
+                markersize=5, linewidth=2, capsize=3)
+    best_n = int(rfe.n_features_)
+    ax.scatter([best_n], [rfe_curve.cv_rmse[best_n - 1]], s=90, color=ORANGE, zorder=5, label=f"Optimum: {best_n} features")
+    ax.set_xlabel("Number of features retained"); ax.set_ylabel("5-fold CV RMSE (ft/hr)")
+    ax.set_title("Recursive feature elimination (RFECV, Random Forest)"); ax.legend(frameon=False, fontsize=8)
+    fig.tight_layout(); save(fig, "feature_rfe.png")
+    return table, rfe_curve, best_n
 
 
 # ----------------------------------------------------------------------------
 # 4. Models
 # ----------------------------------------------------------------------------
 def build_models():
-    scaled = lambda est: Pipeline([("scaler", StandardScaler()), ("model", est)])
+    scaled = lambda est: Pipeline([("imputer", SimpleImputer(strategy="median")),
+                                   ("scaler", StandardScaler()), ("model", est)])
     return {
         "Linear Regression": (scaled(LinearRegression()), {}),
         "Decision Tree": (scaled(DecisionTreeRegressor(random_state=SEED)), {
@@ -247,9 +268,12 @@ def metrics(y, p):
             "R2": r2_score(y, p)}
 
 
-def train_and_evaluate(df):
+def split(df):
     X, y = df[FEATURES], df[TARGET]
-    X_tr, X_te, y_tr, y_te = train_test_split(X, y, test_size=0.20, random_state=SEED)
+    return train_test_split(X, y, test_size=0.20, random_state=SEED)
+
+
+def train_and_evaluate(X_tr, X_te, y_tr, y_te):
     cv = KFold(n_splits=5, shuffle=True, random_state=SEED)
 
     rows, preds, best_params, fitted = [], {}, {}, {}
@@ -271,13 +295,13 @@ def train_and_evaluate(df):
         fitted[name] = best
         print(f"{name:18s}  test R2={m_te['R2']:.3f}  RMSE={m_te['RMSE']:.2f}  fit={fit_time:.2f}s")
     table = pd.DataFrame(rows).set_index("Model")
-    return table, preds, best_params, fitted, (X_tr, X_te, y_tr, y_te)
+    return table, preds, best_params, fitted
 
 
 # ----------------------------------------------------------------------------
 # 5. Evaluation plots
 # ----------------------------------------------------------------------------
-def evaluation_plots(table, preds, y_te, fitted, X_te):
+def evaluation_plots(table, preds, y_te, fitted, X_te, best):
     names = list(preds)
     y = y_te.values
     lim = (0, max(y.max(), max(p.max() for p in preds.values())) * 1.05)
@@ -322,7 +346,6 @@ def evaluation_plots(table, preds, y_te, fitted, X_te):
 
     # Model comparison (two separate panels - never a dual axis)
     order = table.sort_values("Test R2").index
-    best = table["Test R2"].idxmax()
     colors = [ORANGE if n == best else BLUE for n in order]
     fig, axes = plt.subplots(1, 3, figsize=(8.2, 3.0), sharey=True)
     for ax, col, title in zip(axes, ["Test R2", "Test RMSE", "Test MAE"],
@@ -354,33 +377,119 @@ def evaluation_plots(table, preds, y_te, fitted, X_te):
     ax.invert_yaxis(); ax.set_xlabel("ROP (ft/hr)"); ax.set_ylabel("Depth (ft)")
     ax.legend(fontsize=7, frameon=False, loc="lower right"); ax.set_title("Test-set ROP vs depth")
     fig.tight_layout(); save(fig, "eval_depth_track.png")
-    return best
+
+
+def select_final_model(table, blind_table=None):
+    """Final-model rule: highest test R2; if a blind well is available, highest mean of
+    test R2 and blind-well R2 (rewards models that also generalise to an unseen well)."""
+    score = table["Test R2"].copy()
+    if blind_table is not None:
+        score = (table["Test R2"] + blind_table["R2"]) / 2
+    return score.idxmax(), score
+
+
+def blind_test(path, fitted):
+    """Apply the trained models to a completely separate, previously unseen well."""
+    raw = pd.read_csv(path)
+    df, *_ = clean(raw)
+    X, y = df[FEATURES], df[TARGET]
+    rows, preds = [], {}
+    for n, m in fitted.items():
+        p = m.predict(X); preds[n] = p
+        rows.append({"Model": n, **metrics(y, p)})
+    table = pd.DataFrame(rows).set_index("Model")
+    return table, len(df), df, preds
+
+
+def blind_plot(df, preds, table, best):
+    y = df[TARGET]
+    o = np.argsort(df["Depth"].values)
+    fig, axes = plt.subplots(1, 2, figsize=(7.2, 4.6), gridspec_kw={"width_ratios": [1, 1.25]})
+    axes[0].plot(y.values[o], df["Depth"].values[o], color=GREY, linewidth=0.8, label="Measured")
+    axes[0].plot(preds[best][o], df["Depth"].values[o], color=ORANGE, linewidth=0.8, label=f"Predicted ({best})")
+    axes[0].invert_yaxis(); axes[0].set_xlabel("ROP (ft/hr)"); axes[0].set_ylabel("Depth (ft)")
+    axes[0].legend(frameon=False, fontsize=7, loc="lower right"); axes[0].set_title("Blind well: ROP vs depth")
+    lim = (0, max(y.max(), preds[best].max()) * 1.05)
+    axes[1].scatter(y, preds[best], s=7, alpha=0.45, color=BLUE, edgecolors="none")
+    axes[1].plot(lim, lim, color=INK2, linestyle="--", linewidth=1); axes[1].set_xlim(lim); axes[1].set_ylim(lim)
+    axes[1].set_aspect("equal"); axes[1].set_xlabel("Measured ROP (ft/hr)"); axes[1].set_ylabel("Predicted ROP (ft/hr)")
+    axes[1].set_title(f"Blind well ({best}): R² = {table.loc[best, 'R2']:.3f}")
+    fig.tight_layout(); save(fig, "eval_blind_well.png")
+
+
+def model_card(best, fitted, table, best_params, X_tr, n_feat_rfe, blind):
+    """Documentation of the final model, as required by the methodology (Section 13)."""
+    model = fitted[best].regressor_ if hasattr(fitted[best], "regressor_") else fitted[best]
+    est = model.named_steps["model"]
+    card = {
+        "final_model": best,
+        "algorithm": type(est).__name__,
+        "pipeline": [type(step).__name__ for _, step in model.steps] + (["StandardScaler (target)"] if hasattr(fitted[best], "regressor_") else []),
+        "input_parameters": {f: LABELS[f] for f in FEATURES},
+        "target": LABELS[TARGET],
+        "hyperparameters": best_params[best],
+        "test_metrics": {k.replace("Test ", ""): round(float(table.loc[best, k]), 4)
+                         for k in ["Test MAE", "Test MSE", "Test RMSE", "Test R2"]},
+        "cv_rmse": round(float(table.loc[best, "CV RMSE"]), 4),
+        "training_time_s": round(float(table.loc[best, "Training time (s)"]), 4),
+        "rfe_optimum_n_features": n_feat_rfe,
+        "training_range": {f: [round(float(X_tr[f].min()), 3), round(float(X_tr[f].max()), 3)] for f in FEATURES},
+        "blind_well_metrics": None if blind is None else {k: round(float(v), 4) for k, v in blind[0].loc[best].items()},
+        "files": {"model": "models/final_rop_model.joblib", "all_models": "models/all_models.joblib"},
+    }
+    if hasattr(est, "hidden_layer_sizes"):
+        card["architecture"] = {"input_neurons": len(FEATURES), "hidden_layers": list(est.hidden_layer_sizes),
+                                "activation": est.activation, "output_neurons": 1, "solver": est.solver,
+                                "iterations_trained": int(est.n_iter_)}
+    (RES / "model_card.json").write_text(json.dumps(card, indent=2))
+    return card
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--data", default=str(ROOT / "data" / "synthetic_drilling_data_raw.csv"))
+    ap.add_argument("--blind", default=str(ROOT / "data" / "synthetic_blind_well.csv"),
+                    help="CSV of a separate, unseen well for the final blind test ('' to skip)")
     args = ap.parse_args()
     for d in (FIG, RES, MOD):
         d.mkdir(exist_ok=True)
 
+    # 1. Cleaning
     raw = pd.read_csv(args.data)
     df, log, quality, (lo, hi, n_out) = clean(raw)
     pd.DataFrame(log, columns=["Step", "Records"]).to_csv(RES / "cleaning_log.csv", index=False)
     quality.to_csv(RES / "data_quality.csv")
     df.to_csv(ROOT / "data" / "cleaned_drilling_data.csv", index=False)
 
+    # 2. EDA (descriptive, on the cleaned dataset)
     corr, desc = eda(raw, df)
     desc.to_csv(RES / "descriptive_statistics.csv")
     corr.to_csv(RES / "correlation_matrix.csv")
 
-    fs = feature_selection(df)
-    fs.to_csv(RES / "feature_selection.csv")
+    # 3. Split FIRST, then everything that learns from data uses the training set only
+    X_tr, X_te, y_tr, y_te = split(df)
+    fs, rfe_curve, n_feat_rfe = feature_selection(X_tr, y_tr)
+    fs.to_csv(RES / "feature_selection.csv"); rfe_curve.to_csv(RES / "rfe_curve.csv", index=False)
 
-    table, preds, best_params, fitted, (X_tr, X_te, y_tr, y_te) = train_and_evaluate(df)
+    # 4-5. Models, tuning, testing
+    table, preds, best_params, fitted = train_and_evaluate(X_tr, X_te, y_tr, y_te)
     table.to_csv(RES / "model_comparison.csv")
-    best = evaluation_plots(table, preds, y_te, fitted, X_te)
 
+    # 6. Blind test on a separate, previously unseen well
+    blind = None
+    if args.blind and Path(args.blind).exists():
+        blind = blind_test(args.blind, fitted)
+        blind[0].to_csv(RES / "blind_test.csv")
+
+    # 7. Final model selection + evaluation graphs
+    best, score = select_final_model(table, None if blind is None else blind[0])
+    score.rename("Selection score").to_csv(RES / "selection_score.csv")
+    evaluation_plots(table, preds, y_te, fitted, X_te, best)
+    if blind is not None:
+        blind_plot(blind[2], blind[3], blind[0], best)
+        print(f"Blind well ({blind[1]} rows): R2={blind[0].loc[best, 'R2']:.3f}")
+
+    # 8. Save + document final model
     joblib.dump({"model": fitted[best], "features": FEATURES, "target": TARGET},
                 MOD / "final_rop_model.joblib")
     joblib.dump({"models": fitted, "best": best, "features": FEATURES, "target": TARGET},
@@ -392,8 +501,11 @@ def main():
     imp = pd.DataFrame({n: fitted[n].named_steps["model"].feature_importances_
                         for n in ["Random Forest", "Decision Tree"]}, index=FEATURES)
     imp.to_csv(RES / "feature_importance.csv")
+    model_card(best, fitted, table, best_params, X_tr, n_feat_rfe, blind)
     summary = {"best_model": best, "best_params": best_params, "n_train": len(X_tr),
-               "n_test": len(X_te), "outlier_bounds": [lo, hi], "n_outliers": n_out}
+               "n_test": len(X_te), "outlier_bounds": [lo, hi], "n_outliers": n_out,
+               "rfe_optimum_n_features": n_feat_rfe, "n_blind": None if blind is None else blind[1],
+               "selection_rule": "mean of test R2 and blind-well R2" if blind is not None else "test R2"}
     (RES / "summary.json").write_text(json.dumps(summary, indent=2, default=str))
     print("Best model:", best)
 
