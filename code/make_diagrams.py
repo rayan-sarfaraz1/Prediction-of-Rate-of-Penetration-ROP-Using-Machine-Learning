@@ -207,7 +207,7 @@ def app_architecture():
     box(ax, 9.6, 6.0, 3.4, 0.8, "models/*.joblib\n(5 trained models)", fc=LGREY, ec=GREY, fs=7.5)
     box(ax, 9.6, 4.6, 3.4, 0.8, "results/*.csv\nfigures/*.png", fc=LGREY, ec=GREY, fs=7.5)
     box(ax, 13.2, 5.3, 2.8, 1.4, "Thesis builder\n(Word documents)", fc=LGREY, ec=GREY, fs=7.5)
-    box(ax, 7.5, 2.0, 5.6, 1.5, "ROP·AI web app (Streamlit)\nPredict · Optimizer · Explorer\nResults · Batch · About",
+    box(ax, 7.5, 2.0, 5.6, 1.5, "ROP·AI web app (Streamlit)\nLoad · Clean · Explore · Train\nResults · Predict · Optimize · Batch",
         fc=LORANGE, ec=ORANGE, fs=8)
     box(ax, 13.2, 2.0, 2.8, 1.2, "User / examiner\n(web browser)", fs=8)
     box(ax, 1.6, 2.0, 2.8, 1.2, "New CSV upload\n(batch prediction)", fs=8)
@@ -235,7 +235,7 @@ def use_case_diagram():
            (5.4, 8.1, "UC-3 Explore data\n(EDA)"), (9.6, 8.1, "UC-4 Run blind-well test\n& select final model"),
            (5.4, 6.5, "UC-5 Predict ROP\n(single point)"), (9.6, 6.5, "UC-6 Optimize\nWOB & RPM"),
            (5.4, 4.9, "UC-7 Batch prediction\nfrom CSV"), (9.6, 4.9, "UC-8 View model\nresults"),
-           (5.4, 3.3, "UC-9 Download reports,\nmodel & figures"), (9.6, 3.3, "UC-10 Generate thesis\n& reports"),
+           (5.4, 3.3, "UC-9 Save / open\nproject model"), (9.6, 3.3, "UC-10 Generate thesis\n& reports"),
            (7.5, 1.5, "UC-11 Run verification tests")]
     for x, y, t in ucs:
         ax.add_patch(Ellipse((x, y), 3.7, 1.15, fc=LBLUE, ec=BLUE, lw=1.1)); ax.text(x, y, t, ha="center", va="center", fontsize=6.8)

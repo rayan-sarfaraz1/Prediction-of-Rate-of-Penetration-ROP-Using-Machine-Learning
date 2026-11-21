@@ -28,21 +28,23 @@ function front(b, toc) {
 
 function body(b) {
   const BLD = Object.fromEntries((D.blind || []).map((r) => [r[0], r[4]]));
+  const N_TESTS = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "..", "results", "verification.json"), "utf8")).n_tests;
 
   b.chapter("Introduction");
   b.h2("1.1 What is ROP·AI?");
-  b.p("**ROP·AI** is the web-based front end of the final year project *Prediction of Rate of Penetration (ROP) Using Machine Learning*. It turns the trained machine-learning models into an easy-to-use tool: a drilling engineer moves sliders for the drilling parameters and immediately sees the predicted ROP, how ROP responds to each parameter, and which combination of WOB and RPM gives the highest predicted ROP. It also shows all the data analysis and model-comparison results of the project in an interactive form, which makes it ideal for the project presentation and viva.");
-  b.h2("1.2 Main features");
-  b.table("Features of ROP·AI", ["Page", "What it does"], [
-    ["🏠 Overview", "Project summary, key numbers (records, features, best model, best R²), workflow steps and model leaderboard"],
-    ["🎯 Predict ROP", "Live ROP prediction from 8 sliders with ± test-RMSE, gauge, time to drill 1,000 ft, training-range check, predictions of all 5 models, sensitivity curve"],
-    ["⚙️ Optimizer", "Searches WOB × RPM combinations within limits and marks the setting with the highest predicted ROP"],
-    ["📊 Data Explorer", "Interactive scatter plots, histograms, correlation heatmap, ROP–depth log and data table; accepts your own CSV"],
-    ["📈 Model Results", "Comparison table (MAE, MSE, RMSE, R², CV RMSE, training time), actual-vs-predicted, residuals, feature importance, blind-well test and final model selection"],
-    ["📁 Batch Prediction", "Upload a CSV of drilling data, get ROP predictions for every row, accuracy metrics and a downloadable result file"],
-    ["📄 Reports", "Downloads of the thesis, proposal, user guide, verification report and SRS (Word + PDF), all figures, result tables, final model and model card; figure gallery"],
-    ["ℹ️ About", "Aim, models, team, tech stack, inputs/outputs and the methodology flowchart"],
-  ], [2, 6], { leftAll: true });
+  b.p("**ROP·AI** is the web-based front end of the final year project *Prediction of Rate of Penetration (ROP) Using Machine Learning*. It is a guided **prediction studio**: when it opens it asks for a drilling dataset, recognises the columns and units, pre-processes and cleans the data, explores it, trains and tunes five machine-learning models, selects the best one using a test set and a blind well, and then lets the user predict ROP, optimize WOB and RPM and run batch predictions — all inside the browser, without writing any code. This makes it ideal for the project presentation and viva.");
+  b.h2("1.2 Guided workflow and main features");
+  b.table("Workflow steps and pages of ROP·AI", ["Step / page", "What it does"], [
+    ["1 · Load dataset", "Upload a CSV or Excel file (plus an optional blind well), or use the demo dataset or the saved project model. Columns and units are detected automatically and converted to oilfield units"],
+    ["2 · Pre-process & clean", "Removes duplicates, flags physically impossible values, drops missing ROP, removes ROP outliers (k×IQR, adjustable) and splits 80 : 20; shows a cleaning funnel, data-quality chart and before/after box plots"],
+    ["3 · Explore data", "ROP vs each parameter, distributions, correlation heatmap, ROP–depth log, feature selection (Pearson r, mutual information, RF importance, optional RFECV)"],
+    ["4 · Train models", "Linear Regression, Decision Tree, Random Forest, SVR and ANN with grid search + 5-fold CV (fast or full thesis grid), live progress, blind-well test"],
+    ["5 · Results & selection", "Leaderboard (test and blind-well metrics, selection score), actual vs predicted, residuals, feature importance, hyperparameters; save as project model"],
+    ["🎯 Predict ROP", "Live prediction from 8 sliders with ± test RMSE, gauge, time to drill 1,000 ft, training-range check, all five models, sensitivity curve"],
+    ["⚙️ Optimizer", "WOB × RPM contour map within limits with the optimum setting for maximum predicted ROP"],
+    ["📁 Batch prediction", "Upload any drilling file (same automatic column mapping), predict ROP for every row, accuracy if ROP is present, download results"],
+    ["ℹ️ About", "Aim, workflow, team, tech stack and methodology flowchart"],
+  ], [2.1, 5.9], { leftAll: true });
   b.h2("1.3 Inputs and output");
   b.table("Model inputs and output", ["Parameter", "Symbol / column", "Unit", "Slider range in app"], [
     ["Weight on bit", "WOB", "klbf", "5 – 45"], ["Rotary speed", "RPM", "rev/min", "40 – 200"], ["Torque", "Torque", "kft·lbf", "1 – 30"],
@@ -51,7 +53,7 @@ function body(b) {
   ], [2.4, 1.8, 1.2, 2]);
 
   b.chapter("System Architecture");
-  b.p("The system has two parts. The **training pipeline** (code/rop_pipeline.py) reads the drilling CSV, cleans it, performs EDA and feature selection, trains and tunes the five models and saves the models, result tables and figures. The **web app** (app/streamlit_app.py) loads these saved files and lets the user interact with them. Because the app only reads saved files, retraining on new data automatically updates the app.");
+  b.p("The system has two parts. The **training pipeline** (code/rop_pipeline.py) reads the drilling CSV, cleans it, performs EDA and feature selection, trains and tunes the five models and saves the models, result tables and figures. The **web app** (app/streamlit_app.py) runs the same pipeline functions interactively: data loaded in the browser is mapped, cleaned, explored and used to train the models inside the app (module code/data_io.py handles column recognition and unit conversion). A trained model can be saved as the *project model* and opened again later. The command-line pipeline is used to produce the thesis figures and tables.");
   b.figure("diagram_app_architecture.png", "Architecture of the ROP·AI system", 6.2);
   b.table("Technology stack", ["Layer", "Technology", "Why"], [
     ["Language", "Python 3.11+", "Standard for data science; free; huge community"],
@@ -80,7 +82,6 @@ function body(b) {
     "Download the project from GitHub (Code → Download ZIP) and extract it, or clone it with Git.",
     "Open a terminal (Command Prompt / PowerShell / VS Code terminal) in the project folder.",
     "Install the libraries:  **pip install -r requirements.txt**",
-    "(Only the first time, or after changing data) train the models:  **python code/rop_pipeline.py**",
     "Start the app:  **streamlit run app/streamlit_app.py**",
     "The browser opens automatically at **http://localhost:8501**. If not, open that address manually.",
     "To stop the app, press **Ctrl + C** in the terminal.",
@@ -89,54 +90,54 @@ function body(b) {
   b.note("Tip for the viva", "Start the app before the presentation and keep the browser tab open. Press F11 for full-screen mode. Everything runs offline on the laptop once the libraries are installed.");
 
   b.chapter("Using the Application");
-  b.h2("4.1 Sidebar");
-  b.p("The sidebar on the left contains the page menu and the **Prediction model** selector. By default the best model (highest test R²) is selected. Changing the model changes the predictions on the Predict, Optimizer and Batch pages. The card below it shows the selected model's test R² and RMSE. The **ROP units** switch shows all predicted ROP values in ft/hr or m/hr. The yellow notice reminds the user that the current models are trained on demonstration data.");
-  b.h2("4.2 Overview page");
-  b.figure(SS + "01_overview.png", "Overview page", 6.3);
-  b.p(`The Overview page introduces the project. The four cards show the number of records used, the eight input features, the best model (${best}) and its test R² (${M[best][7].toFixed(3)}). The left column lists the eight steps of the methodology and the right column shows the model leaderboard, where the best model is highlighted in orange.`);
-  b.h2("4.3 Predict ROP page");
-  b.figure(SS + "02_predict.png", "Predict ROP page", 6.3);
-  b.numbered(["Move the eight sliders to the drilling conditions you want to test (bit diameter has three positions: 8½, 12¼ and 17½ in).",
-    "The large orange card shows the predicted ROP in ft/hr and m/hr; the gauge shows it on a 0–150 ft/hr scale.",
-    "The card below estimates the on-bottom time needed to drill 1,000 ft at this ROP.",
-    "“What do all five models say?” compares the predictions of all models for the same input — useful to explain model differences in the viva.",
-    "In “Sensitivity”, choose a parameter (e.g. WOB); the curve shows how predicted ROP changes when only that parameter changes, the green band marks the training range and the orange dot marks the current setting."]);
-  b.p("**Training-range check.** Machine-learning models are only reliable inside the range of the data they were trained on. Below the prediction, a green message confirms that all inputs are inside the training range. If any input is outside it, a yellow warning lists the parameter and its training range, as shown below — the prediction is then an extrapolation and must be treated with caution.");
-  b.figure(SS + "02b_range_warning.png", "Training-range warning when WOB is set above the range of the training data", 6.3);
-  b.h2("4.4 Optimizer page");
-  b.figure(SS + "03_optimizer.png", "Drilling parameter optimizer", 6.3);
-  b.p("The optimizer fixes depth, mud density, flow rate, bit diameter and SPP at the chosen values and evaluates the model on a 40 × 40 grid of WOB and RPM values up to the maximum allowable limits. Torque is estimated from WOB using the Torque/WOB ratio. The contour map shows predicted ROP (blue = slow, orange = fast) and the white star marks the optimum. The optimum WOB, RPM and the maximum predicted ROP are shown on the right. The result is a data-driven recommendation and must always be checked against bit ratings, vibration, hole cleaning and torque limits.");
-  b.h2("4.5 Data Explorer page");
-  b.figure(SS + "04_data_explorer.png", "Data Explorer page", 6.3);
-  b.p("The Data Explorer shows the cleaned project data, or any CSV that you upload with the same columns. The tabs provide: **Scatter vs ROP** (coloured by hole size, with Pearson r), **Distributions** (histogram and descriptive statistics), **Correlation** (interactive heatmap), **Depth log** (ROP against depth) and **Table** (first 500 rows). All charts can be zoomed by dragging and reset by double-clicking.");
-  b.h2("4.6 Model Results page");
-  b.figure(SS + "05_model_results.png", "Model Results page", 6.3);
-  b.p("The table compares all five models on the unseen test set; the best R² and RMSE are highlighted. The tabs show actual-vs-predicted scatter with the 1:1 line, residual plot and error histogram, bar charts of R², RMSE and MAE, and the feature importance of the Random Forest and Decision Tree models.");
-  b.p(`The last tab, **Blind well & final selection**, shows how every model performed on a completely separate well that was never used for training. It explains why the final model is the ${best}: Random Forest has the highest test R² (${M["Random Forest"][7].toFixed(3)}) but drops to ${(BLD["Random Forest"] ?? 0).toFixed(3)} on the new well, while the ${best} keeps ${(BLD[best] ?? 0).toFixed(3)}. The selection score is the mean of the test and blind-well R².`);
-  b.figure(SS + "05b_blind_well.png", "Blind-well test and final model selection", 6.3);
-  b.h2("4.7 Batch Prediction page");
-  b.figure(SS + "06_batch.png", "Batch Prediction page", 6.3);
-  b.numbered(["Click **Download CSV template** to get a file with the correct column names.",
-    "Fill it with your drilling data (one row per depth/time step) and upload it. Alternatively, tick “use the demo test set”.",
-    "The app predicts ROP for every row. If the file also contains a measured ROP column, MAE, RMSE and R² are calculated and actual and predicted ROP are plotted against depth.",
-    "Click **Download predictions** to save the results as CSV (opens in Excel)."]);
-  b.h2("4.8 Reports page");
-  b.figure(SS + "08_reports.png", "Reports & Downloads page", 6.3);
-  b.p("The Reports page collects every deliverable: the thesis, proposal, user guide, verification report and SRS (Word and PDF), a ZIP of all figures, a ZIP of all result tables, the final trained model (.joblib) and its model card (.json). The model card shows the algorithm, pipeline, hyperparameters, ANN architecture, inputs and output, test and blind-well metrics and the training range of every input. A figure gallery at the bottom lets you browse all graphs and diagrams for the presentation.");
-  b.h2("4.9 About page");
-  b.figure(SS + "07_about.png", "About page", 6.3);
-  b.p("The About page summarizes the aim, models, team, technology stack, inputs and output, and contains the methodology flowchart. Replace the placeholders [Supervisor Name] and [Student 1–4] in app/streamlit_app.py with your real names.");
+  b.h2("4.1 Navigation");
+  b.p("The sidebar shows the five workflow steps, a progress bar and the ‘Use the model’ pages. Steps unlock one after the other: cleaning is available after a dataset is loaded, exploration and training after cleaning, and results and the prediction pages after training. Completed steps are marked with ✓. Once a model exists, the sidebar shows the active model and a switch for ROP units (ft/hr or m/hr).");
+  b.h2("4.2 Step 1 — Load dataset");
+  b.figure(SS + "01_load_data.png", "Step 1: the app opens by asking for a drilling dataset", 6.3);
+  b.p("When the application opens, it asks for data. There are three ways to start:");
+  b.bullets(["**Upload your dataset** — drag a CSV or Excel file into ‘Training data’. Optionally upload a second, separate well into ‘Blind well’ for the final generalization test.",
+    "**Use demo dataset** — loads the 3,040-row synthetic dataset and its 800-row blind well (for learning and testing).",
+    "**Open saved project** — opens the last model saved with ‘Save as project model’ and goes straight to the results."]);
+  b.figure(SS + "02_column_mapping.png", "Automatic column and unit mapping for a file with metric, Volve-style headers", 6.3);
+  b.p("After an upload, ROP·AI shows the number of rows, columns and missing cells and then the **column mapping**. For every required field it selects the matching column and its unit automatically from the header names (for example ‘Weight on Bit (kkgf)’ → WOB in tonnes, ‘Rate of Penetration (m/h)’ → ROP in m/hr). Check the selections, correct them if needed, and enter a constant bit diameter if the file has no bit-size column. Click **Confirm data & continue to cleaning**; all values are converted to oilfield units.");
+  b.h2("4.3 Step 2 — Pre-process & clean");
+  b.figure(SS + "03_clean.png", "Step 2: pre-processing and cleaning results", 6.3);
+  b.p("Choose the ROP outlier factor k (default 3) and click **Run pre-processing & cleaning**. The app removes duplicates, sets physically impossible values to missing, drops rows without ROP, removes ROP spikes with the k×IQR rule and splits the data 80 : 20. The cards and tabs show the records kept, the cleaning funnel, missing/unrealistic values per column, ROP before and after cleaning and the cleaned table (downloadable as CSV).");
+  b.h2("4.4 Step 3 — Explore data");
+  b.figure(SS + "04_explore.png", "Step 3: exploratory data analysis", 6.3);
+  b.p("The tabs show ROP against each parameter (coloured by hole size, with Pearson r), histograms with descriptive statistics, the correlation heatmap, the ROP–depth log and the feature-selection results calculated on the training set. Recursive feature elimination can be run with one click.");
+  b.h2("4.5 Step 4 — Train models");
+  b.figure(SS + "05_train.png", "Step 4: training and tuning the models", 6.3);
+  b.p("Select the models and the search mode — **Fast** (smaller grids, about 20–40 s) or **Full thesis grid** (the grids of the methodology, about 2 minutes) — and click **Train models**. A progress bar and a live log show the test R² and RMSE of every model. If a blind well was uploaded, all models are also tested on it and the final model is selected automatically.");
+  b.h2("4.6 Step 5 — Results & selection");
+  b.figure(SS + "06_results.png", "Step 5: model comparison and final selection", 6.3);
+  b.p(`The leaderboard lists test metrics, cross-validation RMSE, training time, blind-well R² and RMSE and the selection score (mean of test and blind-well R²); the final model is highlighted. In the demonstration the ${best} is selected: Random Forest reaches a similar test R² but drops to about ${(BLD["Random Forest"] ?? 0).toFixed(2)} on the blind well. Further tabs show actual vs predicted, residuals and errors, feature importance and the optimum hyperparameters. **Save as project model** stores the models and results so that the next session can start with ‘Open saved project’.`);
+  b.h2("4.7 Predict ROP");
+  b.figure(SS + "07_predict.png", "Predict ROP page", 6.3);
+  b.numbered(["Choose the model (the final model is selected by default) and move the eight sliders.",
+    "The result card shows the predicted ROP with its test RMSE; the gauge and the time to drill 1,000 ft are updated instantly.",
+    "A green message confirms that all inputs are inside the training range; a yellow warning lists any input outside it (the prediction is then an extrapolation).",
+    "‘All models’ compares the five models; ‘Sensitivity’ shows how ROP changes with one parameter, with the training range shaded."]);
+  b.h2("4.8 Optimizer");
+  b.figure(SS + "08_optimizer.png", "Drilling-parameter optimizer", 6.3);
+  b.p("Set depth, mud density, flow rate, bit size and SPP and the maximum allowable WOB and RPM. The model is evaluated on a 40 × 40 grid; the contour map shows predicted ROP and the star marks the optimum WOB and RPM. This is a data-driven recommendation — always check bit ratings, vibration, hole cleaning and torque limits.");
+  b.h2("4.9 Batch prediction");
+  b.figure(SS + "09_batch.png", "Batch prediction for an uploaded file with metric units", 6.3);
+  b.p("Upload any drilling file; the same automatic column and unit mapping is used (measured ROP is optional). ROP is predicted for every row and added as the first column. If measured ROP is present, MAE, RMSE and R² are calculated and measured and predicted ROP are plotted against depth. Click **Download predictions** to save the results as CSV.");
+  b.h2("4.10 About");
+  b.figure(SS + "10_about.png", "About page", 6.3);
+  b.p("Aim, workflow, team, technology stack and the methodology flowchart. Replace the placeholders [Supervisor Name] and [Student 1–4] in app/streamlit_app.py with your names.");
 
   b.chapter("Using Real Field Data");
-  b.p("The app currently runs in **demo mode** with models trained on a synthetic dataset. To switch to real data:");
-  b.numbered([
-    "Export the drilling data (e.g. Volve real-time drilling data or field records) to CSV.",
-    "Rename the columns exactly to: Depth, WOB, RPM, Torque, Q, MW, SPP, Bit_Dia, ROP and convert units to ft, klbf, rev/min, kft·lbf, gpm, ppg, psi, in and ft/hr.",
-    "Save the file in the data folder, e.g. data/volve_well1.csv.",
-    "Run:  **python code/rop_pipeline.py --data data/volve_well1.csv**  (takes 1–3 minutes).",
-    "Restart the app. All pages now show the real-data results. Remove the demo notice from the sidebar in app/streamlit_app.py.",
-    "Rebuild the thesis with the new results:  **python code/export_doc_data.py**  then  **python code/reports/make_final.py**.",
-  ]);
+  b.h2("5.1 Where to put the data");
+  b.p("No code changes and no renaming are needed. Real field data can be used in two ways:");
+  b.bullets(["**In the app (recommended):** start the app and upload the file in Step 1. Columns and units are mapped automatically; then follow Steps 2–5 and click **Save as project model**.",
+    "**From the command line (for the thesis figures):** copy the file into the **data/** folder, rename the columns to Depth, WOB, RPM, Torque, Q, MW, SPP, Bit_Dia and ROP in oilfield units, and run  **python code/rop_pipeline.py --data data/well1.csv --blind data/well2.csv**, then  **python code/export_doc_data.py**, **python code/verify.py** and  **python code/reports/make_final.py**."]);
+  b.h2("5.2 Recommended data");
+  b.bullets(["At least two wells: one (or more) for training and a separate one as the blind well.",
+    "Real-time drilling data with WOB, RPM, torque, flow rate, standpipe pressure, mud density, bit depth and ROP — for example the Equinor Volve dataset.",
+    "One row per depth or time step; the file can be CSV (comma or semicolon separated) or Excel."]);
+  b.p("The project includes data/example_metric_format.csv, a file with Volve-style metric headers, to try the automatic mapping. The app converts the following units automatically:");
   b.table("Common unit conversions", ["From", "To", "Multiply by"], [
     ["m/hr", "ft/hr", "3.281"], ["m", "ft", "3.281"], ["tonnes (t)", "klbf", "2.2046"], ["kN", "klbf", "0.2248"],
     ["kN·m", "kft·lbf", "0.7376"], ["L/min", "gpm", "0.2642"], ["m³/s", "gpm", "15,850"], ["g/cm³ (SG)", "ppg", "8.345"],
@@ -153,9 +154,10 @@ function body(b) {
   b.chapter("Viva Demonstration Script");
   b.p("A suggested 5-minute live demonstration:");
   b.table("Suggested live demo flow", ["Time", "Page", "What to show and say"], [
-    ["0:00", "Overview", "Problem: ROP controls drilling cost. Our solution: ML predicts ROP from 8 surface parameters. Show the leaderboard."],
-    ["0:45", "Data Explorer", "Show ROP vs WOB and ROP vs depth; explain cleaning and correlations."],
-    ["1:45", "Model Results", `Compare models: baseline LR (R² ${M["Linear Regression"][7].toFixed(2)}) vs ${best} (R² ${M[best][7].toFixed(2)}); show actual-vs-predicted and feature importance.`],
+    ["0:00", "1 · Load", "Problem: ROP controls drilling cost. Upload the field file — show the automatic column and unit mapping."],
+    ["0:45", "2 · Clean", "Run cleaning — explain duplicates, physical limits, outliers (funnel and before/after box plot)."],
+    ["1:30", "3 · Explore", "Show ROP vs WOB and ROP vs depth, the correlation heatmap and feature relevance."],
+    ["2:15", "4–5 · Train & results", `Train (fast mode) live; compare baseline LR (R² ${M["Linear Regression"][7].toFixed(2)}) with ${best} (R² ${M[best][7].toFixed(2)}) and explain the blind-well selection.`],
     ["2:45", "Predict ROP", "Increase WOB and RPM live — ROP rises; increase mud density or depth — ROP falls (agrees with drilling theory)."],
     ["3:45", "Optimizer", "Show how the model recommends the best WOB/RPM within limits — the practical value for the drilling engineer."],
     ["4:30", "Batch", "Upload a CSV and download predictions — shows the tool is usable on new wells."],
@@ -165,8 +167,9 @@ function body(b) {
   b.table("Common problems and solutions", ["Problem", "Solution"], [
     ["‘python’ or ‘pip’ is not recognized", "Reinstall Python and tick “Add Python to PATH”, or use py -m pip install -r requirements.txt"],
     ["‘streamlit’ is not recognized", "Run python -m streamlit run app/streamlit_app.py"],
-    ["“Model/result files not found”", "Run python code/rop_pipeline.py first to create the models and results"],
-    ["CSV upload error: missing columns", "Rename the CSV columns exactly as in the template (case-sensitive)"],
+    ["‘Open saved project’ is not shown", "No project model has been saved yet — load data, train, then click Save as project model"],
+    ["A field shows ‘required’ in the column mapping", "Select the matching column of your file, or enter a constant (bit diameter)"],
+    ["Strange values after upload", "Check the unit chosen for each column in the mapping step"],
     ["Predictions look unrealistic", "Check units; keep inputs within the range of the training data (models do not extrapolate well)"],
     ["Port 8501 already in use", "Run streamlit run app/streamlit_app.py --server.port 8502"],
   ], [3, 5], { leftAll: true });
@@ -176,7 +179,7 @@ function body(b) {
     ["1", "Methodology, proposal (Ch. 1–3) and complete thesis draft (Ch. 1–5)", "✅ Done (draft)"],
     ["2", "Python pipeline: cleaning, EDA, 5 models, tuning, evaluation, plots", "✅ Done"],
     ["3", "ROP·AI web app and this user guide", "✅ Done"],
-    ["3a", "Leakage-free pipeline, RFE, blind-well test, model card and 44 automated tests", "✅ Done (all tests pass)"],
+    ["3a", `Leakage-free pipeline, RFE, blind-well test, model card and ${N_TESTS} automated tests`, "✅ Done (all tests pass)"],
     ["3b", "Requirements & verification report", "✅ Done"],
     ["4", "Obtain real drilling data (Volve or field) and convert to CSV", "⏳ Pending"],
     ["5", "Re-run pipeline on real data; update Chapter 4 and 5 numbers and discussion", "⏳ Pending"],

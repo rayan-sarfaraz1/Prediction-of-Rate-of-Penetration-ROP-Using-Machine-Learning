@@ -713,8 +713,8 @@ function appendix(b) {
     ["code/generate_synthetic_data.py", "Generates the synthetic demonstration dataset (for testing only)"],
     ["code/rop_pipeline.py", "Complete workflow: cleaning, EDA, feature selection, 5 models, tuning, evaluation, plots, model saving"],
     ["code/make_diagrams.py", "Methodology flowchart and conceptual diagrams"], ["code/verify.py", "Runs all automated tests and re-computes every metric independently"],
-    ["tests/test_pipeline.py", "44 automated tests: formulas, cleaning, split, leakage, models, saved model, app pages"],
-    ["app/streamlit_app.py", "ROP·AI web application"], ["data/", "Raw, cleaned and blind-well datasets (CSV)"],
+    ["tests/test_pipeline.py", "Automated tests: formulas, cleaning, split, leakage, column mapping, models, saved model, complete app workflow"],
+    ["app/streamlit_app.py", "ROP·AI web application (guided workflow)"], ["code/data_io.py", "Column recognition and unit conversion for uploaded datasets"], ["data/", "Raw, cleaned and blind-well datasets (CSV)"],
     ["figures/", "All graphs and diagrams (PNG)"], ["results/", "Tables of results (CSV/JSON)"], ["models/final_rop_model.joblib", "Saved final ROP prediction model"],
     ["documents/", "Final thesis, proposal, user guide and verification report (Word + PDF), app screenshots, reference files"],
     ["code/reports/", "Scripts that build all Word/PDF documents (make_final.py)"],
@@ -725,10 +725,11 @@ function appendix(b) {
   b.figure("diagram_gantt.png", "Project schedule (Gantt chart)", 6.2);
   b.unnumbered("APPENDIX C — ROP·AI WEB APPLICATION");
   b.ch = "C"; b.fig = 0;
-  b.p("To make the final model usable by drilling engineers and to demonstrate the project, a web application named **ROP·AI** was developed with Streamlit. It loads the trained models and results produced by the pipeline and provides live single-point prediction, a WOB–RPM optimizer, interactive data exploration, model comparison and batch prediction from CSV files. Detailed instructions are given in the separate *ROP·AI User Guide*. The application is started with: streamlit run app/streamlit_app.py");
+  b.p("To make the complete workflow usable without programming, a web application named **ROP·AI** was developed with Streamlit. When it opens it asks for a drilling dataset (CSV or Excel), recognises the columns and units automatically and converts them to oilfield units. The user then runs the pre-processing and cleaning, explores the data, trains and tunes the five models (fast or full thesis grid), compares them on the test set and the blind well, and uses the selected model for single-point prediction, WOB–RPM optimization and batch prediction. Detailed instructions are given in the separate *ROP·AI User Guide*; the requirements are specified in the *Software Requirements Specification*. The application is started with: streamlit run app/streamlit_app.py");
   b.figure("diagram_app_architecture.png", "Architecture of the ROP·AI system", 6.0);
-  b.figure("../documents/screenshots/02_predict.png", "ROP·AI prediction page with live ROP prediction from drilling parameters", 6.2);
-  b.figure("../documents/screenshots/03_optimizer.png", "ROP·AI optimizer page showing predicted ROP over WOB and RPM", 6.2);
+  b.figure("../documents/screenshots/02_column_mapping.png", "ROP·AI Step 1: automatic column and unit mapping of an uploaded dataset", 6.2);
+  b.figure("../documents/screenshots/06_results.png", "ROP·AI Step 5: model comparison and final selection", 6.2);
+  b.figure("../documents/screenshots/07_predict.png", "ROP·AI prediction page with live ROP prediction from drilling parameters", 6.2);
 }
 
 // =================================================================== DOCUMENT

@@ -79,7 +79,7 @@ def save(fig, name):
 # ----------------------------------------------------------------------------
 # 1. Data cleaning
 # ----------------------------------------------------------------------------
-def clean(df: pd.DataFrame):
+def clean(df: pd.DataFrame, k: float = 3.0):
     log = [("Raw records", len(df))]
     df = df.drop_duplicates().copy()
     log.append(("After removing duplicates", len(df)))
@@ -104,11 +104,11 @@ def clean(df: pd.DataFrame):
     # Outliers in ROP: IQR rule (3 x IQR, conservative for drilling data)
     q1, q3 = df[TARGET].quantile([0.25, 0.75])
     iqr = q3 - q1
-    lo, hi = q1 - 3 * iqr, q3 + 3 * iqr
+    lo, hi = q1 - k * iqr, q3 + k * iqr
     out_mask = (df[TARGET] < lo) | (df[TARGET] > hi)
     n_out = int(out_mask.sum())
     df = df[~out_mask].reset_index(drop=True)
-    log.append(("After removing ROP outliers (3×IQR)", len(df)))
+    log.append((f"After removing ROP outliers ({k:g}×IQR)", len(df)))
 
     quality = pd.DataFrame({
         "Missing values": missing_before,
@@ -185,7 +185,7 @@ def eda(raw: pd.DataFrame, df: pd.DataFrame):
 # ----------------------------------------------------------------------------
 # 3. Feature selection
 # ----------------------------------------------------------------------------
-def feature_selection(X_tr, y_tr):
+def feature_selection(X_tr, y_tr, plot=True, rfe=True):
     """Feature relevance computed on the TRAINING set only (after train-set median imputation)."""
     X = pd.DataFrame(SimpleImputer(strategy="median").fit_transform(X_tr), columns=FEATURES)
     y = y_tr.reset_index(drop=True)
@@ -194,6 +194,10 @@ def feature_selection(X_tr, y_tr):
     rf = RandomForestRegressor(n_estimators=200, random_state=SEED, n_jobs=-1).fit(X, y)
     rf_imp = pd.Series(rf.feature_importances_, index=FEATURES)
 
+    if not rfe:
+        table = pd.DataFrame({"Pearson r": pearson, "|r|": pearson.abs(), "Mutual information": mi,
+                              "RF importance": rf_imp}).sort_values("Mutual information", ascending=False)
+        return table, None, None
     # Recursive feature elimination with 5-fold CV (Random Forest as estimator)
     rfe = RFECV(RandomForestRegressor(n_estimators=100, random_state=SEED, n_jobs=-1), step=1, min_features_to_select=1,
                 cv=KFold(5, shuffle=True, random_state=SEED), scoring="neg_root_mean_squared_error", n_jobs=-1).fit(X, y)
@@ -203,6 +207,8 @@ def feature_selection(X_tr, y_tr):
     n_feat = np.arange(1, len(FEATURES) + 1)
     rfe_curve = pd.DataFrame({"n_features": n_feat, "cv_rmse": -rfe.cv_results_["mean_test_score"],
                               "cv_rmse_std": rfe.cv_results_["std_test_score"]})
+    if not plot:
+        return table, rfe_curve, int(rfe.n_features_)
 
     fig, axes = plt.subplots(1, 2, figsize=(7.2, 3.2), sharey=False)
     s = table["|r|"].sort_values()
@@ -229,7 +235,22 @@ def feature_selection(X_tr, y_tr):
 # ----------------------------------------------------------------------------
 # 4. Models
 # ----------------------------------------------------------------------------
-def build_models():
+FAST_GRIDS = {  # smaller search spaces for quick runs (e.g. inside the web app)
+    "Decision Tree": {"model__max_depth": [6, 10], "model__min_samples_leaf": [5, 10]},
+    "Random Forest": {"model__n_estimators": [150], "model__max_depth": [None, 15], "model__min_samples_leaf": [1, 2]},
+    "SVR (RBF)": {"regressor__model__C": [10, 100], "regressor__model__gamma": ["scale", 0.2]},
+    "ANN (MLP)": {"regressor__model__hidden_layer_sizes": [(64, 32), (64, 32, 16)], "regressor__model__alpha": [1e-3, 1e-2]},
+}
+
+
+def build_models(fast: bool = False):
+    models = _build_models()
+    if fast:
+        models = {n: (est, FAST_GRIDS.get(n, grid)) for n, (est, grid) in models.items()}
+    return models
+
+
+def _build_models():
     scaled = lambda est: Pipeline([("imputer", SimpleImputer(strategy="median")),
                                    ("scaler", StandardScaler()), ("model", est)])
     return {
@@ -273,27 +294,28 @@ def split(df):
     return train_test_split(X, y, test_size=0.20, random_state=SEED)
 
 
-def train_and_evaluate(X_tr, X_te, y_tr, y_te):
+def train_one(name, est, grid, X_tr, y_tr, X_te, y_te):
+    """Grid search (5-fold CV) + refit + test evaluation for one model."""
     cv = KFold(n_splits=5, shuffle=True, random_state=SEED)
+    t0 = time.perf_counter()
+    gs = GridSearchCV(est, grid or {}, cv=cv, scoring="neg_root_mean_squared_error", n_jobs=-1)
+    gs.fit(X_tr, y_tr)
+    tune_time = time.perf_counter() - t0
+    best = gs.best_estimator_
+    t0 = time.perf_counter(); best.fit(X_tr, y_tr); fit_time = time.perf_counter() - t0
+    m_tr, m_te = metrics(y_tr, best.predict(X_tr)), metrics(y_te, p_te := best.predict(X_te))
+    row = {"Model": name, "Train R2": m_tr["R2"], "Train RMSE": m_tr["RMSE"], "CV RMSE": -gs.best_score_,
+           **{f"Test {k}": v for k, v in m_te.items()}, "Training time (s)": fit_time, "Tuning time (s)": tune_time}
+    params = {k.split("__")[-1]: (list(v) if isinstance(v, tuple) else v) for k, v in gs.best_params_.items()}
+    return row, p_te, params, best
 
+
+def train_and_evaluate(X_tr, X_te, y_tr, y_te, fast=False):
     rows, preds, best_params, fitted = [], {}, {}, {}
-    for name, (est, grid) in build_models().items():
-        t0 = time.perf_counter()
-        gs = GridSearchCV(est, grid or {}, cv=cv, scoring="neg_root_mean_squared_error", n_jobs=-1)
-        gs.fit(X_tr, y_tr)
-        tune_time = time.perf_counter() - t0
-        best = gs.best_estimator_
-        t0 = time.perf_counter(); best.fit(X_tr, y_tr); fit_time = time.perf_counter() - t0
-        p_tr, p_te = best.predict(X_tr), best.predict(X_te)
-        m_tr, m_te = metrics(y_tr, p_tr), metrics(y_te, p_te)
-        rows.append({"Model": name, "Train R2": m_tr["R2"], "Train RMSE": m_tr["RMSE"],
-                     "CV RMSE": -gs.best_score_, **{f"Test {k}": v for k, v in m_te.items()},
-                     "Training time (s)": fit_time, "Tuning time (s)": tune_time})
-        preds[name] = p_te
-        best_params[name] = {k.split("__")[-1]: (list(v) if isinstance(v, tuple) else v)
-                             for k, v in gs.best_params_.items()}
-        fitted[name] = best
-        print(f"{name:18s}  test R2={m_te['R2']:.3f}  RMSE={m_te['RMSE']:.2f}  fit={fit_time:.2f}s")
+    for name, (est, grid) in build_models(fast).items():
+        row, p_te, params, best = train_one(name, est, grid, X_tr, y_tr, X_te, y_te)
+        rows.append(row); preds[name] = p_te; best_params[name] = params; fitted[name] = best
+        print(f"{name:18s}  test R2={row['Test R2']:.3f}  RMSE={row['Test RMSE']:.2f}  fit={row['Training time (s)']:.2f}s")
     table = pd.DataFrame(rows).set_index("Model")
     return table, preds, best_params, fitted
 
@@ -389,8 +411,8 @@ def select_final_model(table, blind_table=None):
 
 
 def blind_test(path, fitted):
-    """Apply the trained models to a completely separate, previously unseen well."""
-    raw = pd.read_csv(path)
+    """Apply the trained models to a completely separate, previously unseen well (CSV path or DataFrame)."""
+    raw = path if isinstance(path, pd.DataFrame) else pd.read_csv(path)
     df, *_ = clean(raw)
     X, y = df[FEATURES], df[TARGET]
     rows, preds = [], {}

@@ -15,6 +15,7 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "code"))
 import rop_pipeline as rp  # noqa: E402
+import data_io  # noqa: E402,F401
 
 RES, MOD, FIG = ROOT / "results", ROOT / "models", ROOT / "figures"
 CLEAN = pd.read_csv(ROOT / "data" / "cleaned_drilling_data.csv")
@@ -169,15 +170,60 @@ def test_required_figures_exist(fig):
     assert (FIG / fig).exists() and (FIG / fig).stat().st_size > 10_000
 
 
-# ---------------------------------------------------------------- web app
-APP_PAGES = ["🏠 Overview", "🎯 Predict ROP", "⚙️ Optimizer", "📊 Data Explorer", "📈 Model Results",
-             "📁 Batch Prediction", "📄 Reports", "ℹ️ About"]
+# ---------------------------------------------------------------- data input (column mapping + units)
+def test_column_mapping_recognises_field_style_headers():
+    import data_io as dio
+    df = pd.read_csv(ROOT / "data" / "example_metric_format.csv")
+    m = dio.guess_mapping(df.columns)
+    assert m["Depth"] == "Bit Depth (m)" and m["ROP"] == "Rate of Penetration (m/h)" and m["Bit_Dia"] is None
+    units = {f: dio.guess_unit(f, m[f]) for f in dio.FIELDS}
+    assert units["Depth"] == "m" and units["WOB"] == "tonne (t) / kkgf" and units["MW"] == "g/cm³ (SG)" and units["ROP"] == "m/hr"
+
+
+def test_unit_conversion_recovers_oilfield_values():
+    import data_io as dio
+    df = pd.read_csv(ROOT / "data" / "example_metric_format.csv")
+    m = dio.guess_mapping(df.columns)
+    std = dio.apply_mapping(df, m, {f: dio.guess_unit(f, m[f]) for f in dio.FIELDS}, {"Bit_Dia": 8.5})
+    orig = pd.read_csv(ROOT / "data" / "synthetic_blind_well.csv")
+    for f in ["Depth", "WOB", "Torque", "Q", "MW", "SPP", "ROP"]:
+        assert np.allclose(std[f], orig[f], rtol=2e-3, atol=0.05), f
+
+
+# ---------------------------------------------------------------- web app (guided workflow, end to end)
+APP_PAGES = ["data", "clean", "explore", "train", "results", "predict", "optimizer", "batch", "about"]
+
+
+@pytest.fixture(scope="module")
+def app_after_training():
+    from streamlit.testing.v1 import AppTest
+    at = AppTest.from_file(str(ROOT / "app" / "streamlit_app.py"), default_timeout=600)
+    at.run()
+    at.button(key="btn_demo").click().run()          # step 1: load demo dataset
+    at.button(key="btn_clean").click().run()         # step 2: clean
+    at.session_state["page"] = "train"; at.run()
+    at.button(key="btn_train").click().run()         # step 4: train (fast grid)
+    return at
+
+
+def test_app_workflow_produces_final_model(app_after_training):
+    at = app_after_training
+    assert not at.exception, [e.value for e in at.exception]
+    assert at.session_state["best"] in MODELS
+    assert len(at.session_state["clean"]) == len(CLEAN)
 
 
 @pytest.mark.parametrize("page", APP_PAGES)
-def test_every_app_page_runs_without_error(page):
+def test_every_app_page_runs_without_error(app_after_training, page):
+    at = app_after_training
+    at.session_state["page"] = page
+    at.run()
+    assert not at.exception, [e.value for e in at.exception]
+
+
+def test_app_opens_on_data_step_and_locks_later_steps():
     from streamlit.testing.v1 import AppTest
     at = AppTest.from_file(str(ROOT / "app" / "streamlit_app.py"), default_timeout=120)
     at.run()
-    at.sidebar.radio[0].set_value(page).run()
-    assert not at.exception, [e.value for e in at.exception]
+    assert at.session_state["page"] == "data"
+    assert at.button(key="nav_train").disabled and at.button(key="nav_predict").disabled

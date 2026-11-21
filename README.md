@@ -7,12 +7,12 @@
 ![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?logo=python&logoColor=white)
 ![scikit-learn](https://img.shields.io/badge/scikit--learn-ML-F7931E?logo=scikitlearn&logoColor=white)
 ![Streamlit](https://img.shields.io/badge/Streamlit-Web%20App-FF4B4B?logo=streamlit&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-44%20passed-2ea44f)
+![Tests](https://img.shields.io/badge/tests-49%20passed-2ea44f)
 
 *Predicting how fast the drill bit penetrates the rock from eight everyday surface drilling parameters —
 with five machine-learning models, a blind-well test and an interactive web app.*
 
-<img src="documents/screenshots/01_overview.png" alt="ROP·AI overview page" width="90%">
+<img src="documents/screenshots/06_results.png" alt="ROP·AI results page" width="90%">
 
 </div>
 
@@ -60,28 +60,37 @@ and is selected as the final model (score = mean of test R² and blind-well R²)
   <img src="figures/eval_blind_well.png" width="49%" alt="Blind well test">
 </p>
 
-## 🌐 ROP·AI web application
+## 🌐 ROP·AI web application — guided workflow
 
-An interactive dark-themed Streamlit app turns the trained models into a usable tool:
+A premium dark-themed Streamlit studio. **When it opens it asks for your drilling data**, then guides you step by step:
 
-| Page | What it does |
+| Step | What happens |
 |---|---|
-| 🏠 Overview | Key numbers, workflow and model leaderboard (test vs blind well) |
-| 🎯 Predict ROP | Live prediction from 8 sliders, ± error, gauge, training-range warning, sensitivity curve |
-| ⚙️ Optimizer | WOB × RPM contour map with the optimum setting for maximum ROP |
-| 📊 Data Explorer | Interactive scatter, histograms, correlation heatmap, depth log; upload your own CSV |
-| 📈 Model Results | Metrics table, actual vs predicted, residuals, feature importance, blind-well selection |
-| 📁 Batch Prediction | Upload a CSV → ROP for every row → download results |
-| 📄 Reports | Download thesis, proposal, user guide, verification report, SRS, figures, model and model card |
+| **1 · Load dataset** | Upload CSV/Excel (+ optional blind well). Columns **and units** are recognised automatically (e.g. `Weight on Bit (kkgf)`, `Rate of Penetration (m/h)`) and converted to oilfield units. Or use the demo dataset / open the saved project. |
+| **2 · Pre-process & clean** | Duplicates, physical-limit checks, missing ROP, k×IQR outliers, 80 : 20 split — cleaning funnel, data-quality chart, before/after plots |
+| **3 · Explore data** | ROP vs parameters, distributions, correlation heatmap, depth log, feature selection (Pearson, MI, RF importance, RFECV) |
+| **4 · Train models** | 5 models, grid search + 5-fold CV (fast ≈ 25 s or full thesis grid), live progress, blind-well test |
+| **5 · Results & selection** | Leaderboard (test + blind well + selection score), actual vs predicted, residuals, feature importance; **save as project model** |
+| 🎯 Predict · ⚙️ Optimizer · 📁 Batch | Live prediction with range check, WOB × RPM optimum, batch prediction for any file |
 
 <p align="center">
-  <img src="documents/screenshots/02_predict.png" width="49%" alt="Predict page">
-  <img src="documents/screenshots/03_optimizer.png" width="49%" alt="Optimizer page">
+  <img src="documents/screenshots/01_load_data.png" width="49%" alt="Step 1 load data">
+  <img src="documents/screenshots/02_column_mapping.png" width="49%" alt="Automatic column mapping">
 </p>
 <p align="center">
-  <img src="documents/screenshots/05b_blind_well.png" width="49%" alt="Blind well selection">
-  <img src="documents/screenshots/08_reports.png" width="49%" alt="Reports page">
+  <img src="documents/screenshots/03_clean.png" width="49%" alt="Step 2 cleaning">
+  <img src="documents/screenshots/06_results.png" width="49%" alt="Step 5 results">
 </p>
+<p align="center">
+  <img src="documents/screenshots/07_predict.png" width="49%" alt="Predict page">
+  <img src="documents/screenshots/08_optimizer.png" width="49%" alt="Optimizer page">
+</p>
+
+### 📥 Where do I put my data?
+
+- **Easiest:** run the app and upload the file in **Step 1** — any column names, metric or oilfield units. Then follow Steps 2–5 and click *Save as project model*.
+- **Command line (thesis figures):** copy the file into [`data/`](data) with the standard columns and run the pipeline (see *Re-run everything* below).
+- Try [`data/example_metric_format.csv`](data/example_metric_format.csv) to see the automatic column/unit mapping.
 
 ## 📄 Documents
 
@@ -101,20 +110,21 @@ Reference files from the department and supervisor (methodology, thesis template
 ## 🗂️ Repository structure
 
 ```
-├── app/streamlit_app.py          ROP·AI web application
+├── app/streamlit_app.py          ROP·AI web application (guided workflow)
 ├── code/
 │   ├── rop_pipeline.py           complete ML workflow (cleaning → models → evaluation → final model)
+│   ├── data_io.py                column recognition + unit conversion for any dataset
 │   ├── generate_synthetic_data.py   demonstration dataset + separate blind well
 │   ├── make_diagrams.py          flowchart, drilling system, ANN, RF, CV, Gantt, architecture, use-case and DFD diagrams
 │   ├── export_doc_data.py        collects results for the documents
 │   ├── verify.py                 runs all tests + independent re-computation of metrics
 │   └── reports/                  scripts that build all Word/PDF documents (make_final.py)
-├── data/                         all datasets (raw, cleaned, blind well)
+├── data/                         all datasets (raw, cleaned, blind well, example metric file)
 ├── documents/                    final reports (Word + PDF), app screenshots, reference files
 ├── figures/                      all graphs and diagrams (PNG)
 ├── models/                       trained models (.joblib)
 ├── results/                      result tables, model card, verification results
-├── tests/test_pipeline.py        44 automated tests
+├── tests/test_pipeline.py        49 automated tests
 └── requirements.txt
 ```
 
@@ -122,7 +132,7 @@ Reference files from the department and supervisor (methodology, thesis template
 
 ```bash
 pip install -r requirements.txt
-streamlit run app/streamlit_app.py          # opens http://localhost:8501
+streamlit run app/streamlit_app.py          # opens http://localhost:8501 → upload your data in Step 1
 ```
 
 ### Re-run everything (e.g. with real field data)
@@ -131,7 +141,7 @@ streamlit run app/streamlit_app.py          # opens http://localhost:8501
 python code/rop_pipeline.py --data data/well1.csv --blind data/well2.csv
 python code/make_diagrams.py
 python code/export_doc_data.py
-python code/verify.py                       # 44 tests + metric re-computation
+python code/verify.py                       # 49 tests + metric re-computation
 python code/reports/make_final.py           # all Word + PDF documents (needs Node.js 'docx' + LibreOffice)
 ```
 
@@ -145,7 +155,7 @@ The CSV must contain the columns `Depth, WOB, RPM, Torque, Q, MW, SPP, Bit_Dia, 
 - Feature selection: Pearson r, mutual information, Random-Forest importance and **RFECV**.
 - Grid search with 5-fold cross-validation for every model.
 - **Blind-well test** on a separate well never used in training; documented **model card** with training ranges.
-- **44 automated tests** (formulas, cleaning, split, leakage, saved model, physical plausibility, every app page) — all passing; reported metrics match an independent NumPy re-computation to 10⁻¹⁵.
+- **49 automated tests** (formulas, cleaning, split, leakage, column mapping & units, saved model, physical plausibility, complete app workflow) — all passing; reported metrics match an independent NumPy re-computation to 10⁻¹⁵.
 
 See the [verification report](documents/ROP_FYP_Verification_Report.pdf) for the full requirement-by-requirement traceability.
 
