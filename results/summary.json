@@ -1,0 +1,38 @@
+{
+  "best_model": "ANN (MLP)",
+  "best_params": {
+    "Linear Regression": {},
+    "Decision Tree": {
+      "max_depth": 10,
+      "min_samples_leaf": 10,
+      "min_samples_split": 2
+    },
+    "Random Forest": {
+      "max_depth": 20,
+      "min_samples_leaf": 2,
+      "min_samples_split": 2,
+      "n_estimators": 300
+    },
+    "SVR (RBF)": {
+      "C": 10,
+      "epsilon": 0.1,
+      "gamma": 0.2
+    },
+    "ANN (MLP)": {
+      "alpha": 0.01,
+      "hidden_layer_sizes": [
+        64,
+        32,
+        16
+      ],
+      "learning_rate_init": 0.001
+    }
+  },
+  "n_train": 2379,
+  "n_test": 595,
+  "outlier_bounds": [
+    -55.55749999999999,
+    137.4675
+  ],
+  "n_outliers": 26
+}

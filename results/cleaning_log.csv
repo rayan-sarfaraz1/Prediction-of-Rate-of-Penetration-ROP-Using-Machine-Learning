@@ -1,0 +1,5 @@
+Step,Records
+Raw records,3040
+After removing duplicates,3009
+After removing rows with invalid/missing ROP,3000
+After removing ROP outliers (3×IQR),2974
